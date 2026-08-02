@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quant-marketdata"
+version = "0.1.0"
+description = "Market-data & execution-simulation primitives for crypto perp/spot carry: observed order books (ccxt), book-walking paper fills, square-root market impact + breakeven-in-size, and funding-carry cost attribution. numpy/pandas."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Robin Denis" }]
+keywords = [
+    "market-impact",
+    "slippage",
+    "order-book",
+    "paper-trading",
+    "execution",
+    "funding-carry",
+    "crypto",
+    "quant",
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Science/Research",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = ["pandas>=2.0"]
+
+[project.optional-dependencies]
+live = ["ccxt>=4.2"]
+dev = ["pytest>=7", "ruff>=0.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
