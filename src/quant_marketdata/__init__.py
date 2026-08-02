@@ -7,11 +7,18 @@ The honest cost-realism layer between a backtest and real fills (models, not rea
 - live_quotes: observed books/spreads via ccxt (lazy; the ``live`` extra) + HL urllib fallback.
 pandas core; ccxt only for live_quotes.
 """
+from quant_marketdata.binance_funding import load_funding_rate as load_binance_funding
 from quant_marketdata.carry_cost import (
     breakeven_turnover,
     carry_friction_bps_per_day,
     evaluate_tripwire,
 )
+from quant_marketdata.funding_diff import (
+    annualized_diff,
+    cross_venue_diff,
+    differential_carry_frame,
+)
+from quant_marketdata.hyperliquid_funding import load_funding_rate as load_hl_funding
 from quant_marketdata.live_quotes import fetch_leg_books, fetch_leg_spreads
 from quant_marketdata.market_impact import (
     book_impact_curve,
@@ -28,9 +35,15 @@ from quant_marketdata.paper_execution import (
     walk_book,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
+    # funding rates + cross-venue differential
+    "load_binance_funding",
+    "load_hl_funding",
+    "annualized_diff",
+    "cross_venue_diff",
+    "differential_carry_frame",
     # carry_cost
     "carry_friction_bps_per_day",
     "breakeven_turnover",

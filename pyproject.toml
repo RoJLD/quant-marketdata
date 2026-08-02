@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quant-marketdata"
-version = "0.1.0"
-description = "Market-data & execution-simulation primitives for crypto perp/spot carry: observed order books (ccxt), book-walking paper fills, square-root market impact + breakeven-in-size, and funding-carry cost attribution. numpy/pandas."
+version = "0.2.0"
+description = "Market-data & execution-simulation primitives for crypto perp/spot carry: funding-rate loaders (Binance/Hyperliquid) + cross-venue differential, observed order books (ccxt), book-walking paper fills, square-root market impact + breakeven-in-size, and funding-carry cost attribution. numpy/pandas."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
