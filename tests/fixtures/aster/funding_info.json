@@ -1,0 +1,122 @@
+[
+ {
+  "symbol": "SKHXUSDT",
+  "interestRate": "0.00010000",
+  "time": 1792075139001,
+  "fundingIntervalHours": 1,
+  "fundingFeeCap": 0.02,
+  "fundingFeeFloor": -0.02
+ },
+ {
+  "symbol": "币安人生USDT",
+  "interestRate": "0.00010000",
+  "time": 1792075139001,
+  "fundingIntervalHours": 4,
+  "fundingFeeCap": 0.02,
+  "fundingFeeFloor": -0.02
+ },
+ {
+  "symbol": "ETHUSDT",
+  "interestRate": "0.00010000",
+  "time": 1792075139001,
+  "fundingIntervalHours": 8,
+  "fundingFeeCap": 0.003,
+  "fundingFeeFloor": -0.003
+ },
+ {
+  "symbol": "TONUSDT",
+  "interestRate": "0.00010000",
+  "time": 1792075139001,
+  "fundingIntervalHours": 4,
+  "fundingFeeCap": 0.02,
+  "fundingFeeFloor": -0.02
+ },
+ {
+  "symbol": "1000PEPEUSDT",
+  "interestRate": "0.00010000",
+  "time": 1792075139001,
+  "fundingIntervalHours": 8,
+  "fundingFeeCap": 0.02,
+  "fundingFeeFloor": -0.02
+ },
+ {
+  "symbol": "NVDAUSDT",
+  "interestRate": "0",
+  "time": 1792075139001,
+  "fundingIntervalHours": 8,
+  "fundingFeeCap": 0.02,
+  "fundingFeeFloor": -0.02
+ },
+ {
+  "symbol": "XAUUSDT",
+  "interestRate": "0",
+  "time": 1792075139001,
+  "fundingIntervalHours": 4,
+  "fundingFeeCap": 0.005,
+  "fundingFeeFloor": -0.005
+ },
+ {
+  "symbol": "SPYUSDT",
+  "interestRate": "0",
+  "time": 1792075139001,
+  "fundingIntervalHours": 8,
+  "fundingFeeCap": 0.02,
+  "fundingFeeFloor": -0.02
+ },
+ {
+  "symbol": "BTCUSD1",
+  "interestRate": "0.00010000",
+  "time": 1792075139001,
+  "fundingIntervalHours": 8,
+  "fundingFeeCap": 0.00375,
+  "fundingFeeFloor": -0.00375
+ },
+ {
+  "symbol": "BTCUSDT",
+  "interestRate": "0.00010000",
+  "time": 1792075139001,
+  "fundingIntervalHours": 8,
+  "fundingFeeCap": 0.003,
+  "fundingFeeFloor": -0.003
+ },
+ {
+  "symbol": "BTCU",
+  "interestRate": "0.00010000",
+  "time": 1792075139001,
+  "fundingIntervalHours": 8,
+  "fundingFeeCap": 0.00375,
+  "fundingFeeFloor": -0.00375
+ },
+ {
+  "symbol": "SMSNUSDT",
+  "interestRate": "0.00010000",
+  "time": 1792075139001,
+  "fundingIntervalHours": 1,
+  "fundingFeeCap": 0.02,
+  "fundingFeeFloor": -0.02
+ },
+ {
+  "symbol": "QQQUSDT",
+  "interestRate": "0",
+  "time": 1792075139001,
+  "fundingIntervalHours": 8,
+  "fundingFeeCap": 0.02,
+  "fundingFeeFloor": -0.02
+ },
+ {
+  "symbol": "PAXGUSDT",
+  "interestRate": "0.00010000",
+  "time": 1792075139001,
+  "fundingIntervalHours": 4,
+  "fundingFeeCap": 0.02,
+  "fundingFeeFloor": -0.02
+ },
+ {
+  "symbol": "ARGUSUSDT",
+  "interestRate": "0.00010000",
+  "time": 1792074779000,
+  "fundingIntervalHours": 1,
+  "fundingFeeCap": 0.02,
+  "fundingFeeFloor": -0.02
+ }
+]

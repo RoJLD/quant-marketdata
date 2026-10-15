@@ -1,0 +1,324 @@
+[
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791792000002,
+  "fundingRate": "-0.00003481",
+  "markPrice": "0.16741652",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791820800006,
+  "fundingRate": "-0.02000000",
+  "markPrice": "0.29619000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791824400011,
+  "fundingRate": "-0.00157899",
+  "markPrice": "0.29104000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791828000002,
+  "fundingRate": "-0.00123932",
+  "markPrice": "0.30271939",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791831600002,
+  "fundingRate": "-0.00095692",
+  "markPrice": "0.31105000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791835200000,
+  "fundingRate": "-0.00066814",
+  "markPrice": "0.29943000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791838800004,
+  "fundingRate": "-0.00100241",
+  "markPrice": "0.29457000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791842400004,
+  "fundingRate": "-0.00097913",
+  "markPrice": "0.27479000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791846000000,
+  "fundingRate": "-0.00090636",
+  "markPrice": "0.28152000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791849600002,
+  "fundingRate": "-0.00078834",
+  "markPrice": "0.27974187",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791853200002,
+  "fundingRate": "-0.00070577",
+  "markPrice": "0.23717307",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791856800000,
+  "fundingRate": "-0.00036364",
+  "markPrice": "0.25376936",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791860400000,
+  "fundingRate": "-0.00039317",
+  "markPrice": "0.23751000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791864000001,
+  "fundingRate": "-0.00024915",
+  "markPrice": "0.23567330",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791867600000,
+  "fundingRate": "-0.00036961",
+  "markPrice": "0.23664000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791871200002,
+  "fundingRate": "-0.00050017",
+  "markPrice": "0.24216000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791874800000,
+  "fundingRate": "-0.00059203",
+  "markPrice": "0.24409000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791878400005,
+  "fundingRate": "-0.00044575",
+  "markPrice": "0.23917537",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791882000005,
+  "fundingRate": "-0.00046537",
+  "markPrice": "0.24594000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791885600000,
+  "fundingRate": "-0.00057111",
+  "markPrice": "0.24144000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791889200004,
+  "fundingRate": "-0.00046327",
+  "markPrice": "0.24159000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791892800002,
+  "fundingRate": "-0.00031825",
+  "markPrice": "0.24582427",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791896400000,
+  "fundingRate": "-0.00023639",
+  "markPrice": "0.23933205",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791900000000,
+  "fundingRate": "-0.00020144",
+  "markPrice": "0.23990125",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791903600000,
+  "fundingRate": "-0.00012672",
+  "markPrice": "0.24618000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791907200000,
+  "fundingRate": "-0.00009223",
+  "markPrice": "0.24432000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791910800000,
+  "fundingRate": "-0.00003377",
+  "markPrice": "0.23508241",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791914400000,
+  "fundingRate": "-0.00004429",
+  "markPrice": "0.22760449",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791918000000,
+  "fundingRate": "-0.00000424",
+  "markPrice": "0.22363285",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791921600000,
+  "fundingRate": "-0.00001563",
+  "markPrice": "0.22624648",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791925200002,
+  "fundingRate": "-0.00003571",
+  "markPrice": "0.22412000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791928800000,
+  "fundingRate": "-0.00005907",
+  "markPrice": "0.22482000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791932400000,
+  "fundingRate": "-0.00006408",
+  "markPrice": "0.22444000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791936000001,
+  "fundingRate": "-0.00010713",
+  "markPrice": "0.22469000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791939600000,
+  "fundingRate": "-0.00009064",
+  "markPrice": "0.22642909",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791943200000,
+  "fundingRate": "-0.00006804",
+  "markPrice": "0.21413000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791946800004,
+  "fundingRate": "0.00001250",
+  "markPrice": "0.21750000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791950400005,
+  "fundingRate": "-0.00003168",
+  "markPrice": "0.21545294",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791964800001,
+  "fundingRate": "-0.00006988",
+  "markPrice": "0.20287292",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791979200000,
+  "fundingRate": "-0.00005128",
+  "markPrice": "0.19327629",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1791993600002,
+  "fundingRate": "-0.00046341",
+  "markPrice": "0.21240556",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1792008000003,
+  "fundingRate": "-0.00026904",
+  "markPrice": "0.21413000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1792022400000,
+  "fundingRate": "-0.00052824",
+  "markPrice": "0.22037407",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1792036800000,
+  "fundingRate": "-0.00049499",
+  "markPrice": "0.19881674",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1792051200000,
+  "fundingRate": "-0.00044336",
+  "markPrice": "0.19744000",
+  "rateType": "Regular"
+ },
+ {
+  "symbol": "GTCUSDT",
+  "fundingTime": 1792065600000,
+  "fundingRate": "-0.00065132",
+  "markPrice": "0.19396000",
+  "rateType": "Regular"
+ }
+]

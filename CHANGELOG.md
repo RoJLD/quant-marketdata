@@ -6,6 +6,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 The shared market- and funding-data layer of the platform; the cross-repo dependency map lives in the
 Quant-lab repo's `docs/PLATFORM.md`.
 
+## [Unreleased]
+
+### Added
+- **Venue adapters for Hyperliquid, Binance (USD-M futures), Extended and Aster**, on the Lighter
+  template (stdlib JSON client, no SDK, quirks in each module docstring, parsers tested on recorded
+  payloads): funding normalized to the canonical schema, last/mark candles, specs snapshots.
+- Per-symbol funding intervals for Binance and Aster (`fundingInfo`), with each event's interval read from
+  the gap to the previous settlement (capped at 8h) so that a symbol moved between 8h, 4h and 1h keeps a
+  correct `rate_1h`.
+- Registry rules for the four venues (`USDT` books collapse to `USD`, second stablecoin books keep their
+  quote, `1000`/`1000000`/`1M`/`k` multipliers) and venue-declared asset classes (Binance
+  `underlyingType`, Aster `underlyingSubType`, Extended `category`), plus overrides for gold tokens and
+  Extended's mixed ETF/Index markets.
+- `finalize_funding(..., max_interval_h=)` and `paging.forward_fetch` (cursor pagination).
+- An equivalence test: the Binance and Hyperliquid adapters reproduce the daily means of
+  `load_binance_funding` / `load_hl_funding` on a recorded window.
+
+### Unchanged
+- The v0.2 loaders and `funding_diff`.
+
 ## [0.3.0] — 2026-10-15
 
 ### Added

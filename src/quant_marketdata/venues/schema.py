@@ -11,6 +11,7 @@ pay shorts**; ``rate_1h`` divides it by the interval in hours and is the column 
 from __future__ import annotations
 
 from enum import Enum
+from typing import Optional
 
 import pandas as pd
 
@@ -65,19 +66,23 @@ def empty_frame(columns: list[str], index_name: str = "ts") -> pd.DataFrame:
     return frame
 
 
-def finalize_funding(frame: pd.DataFrame, nominal_interval_h: float) -> pd.DataFrame:
+def finalize_funding(frame: pd.DataFrame, nominal_interval_h: float,
+                     max_interval_h: Optional[float] = None) -> pd.DataFrame:
     """Derive ``interval_h``, ``rate_1h`` and ``apr`` from a frame holding a signed ``rate`` per event.
 
-    ``interval_h`` is the gap to the previous settlement, capped at the venue's nominal interval: a missing
-    event must not inflate the hourly rate of the next one. The first event gets the nominal interval.
+    ``interval_h`` is the gap to the previous settlement, capped at ``max_interval_h`` (default: the
+    nominal interval): a missing event must not inflate the hourly rate of the next one. The first event
+    gets the nominal interval. Venues whose per-symbol interval changes over time (Binance moves symbols
+    between 8h, 4h and 1h) pass their longest interval as ``max_interval_h`` and the current one as nominal.
     """
     if frame.empty:
         return empty_frame(FUNDING_COLUMNS)
+    cap = nominal_interval_h if max_interval_h is None else max(max_interval_h, nominal_interval_h)
     frame = frame.sort_index()
     frame = frame[~frame.index.duplicated(keep="last")]
     # Venues settle on whole hours; rounding absorbs settlements stamped a few seconds late.
     gaps_h = (frame.index.to_series().diff().dt.total_seconds() / 3600).round()
-    interval = gaps_h.clip(lower=1, upper=nominal_interval_h).fillna(nominal_interval_h)
+    interval = gaps_h.clip(lower=1, upper=cap).fillna(nominal_interval_h)
     out = frame.copy()
     out["interval_h"] = interval.to_numpy()
     out["rate_1h"] = out["rate"] / out["interval_h"]
