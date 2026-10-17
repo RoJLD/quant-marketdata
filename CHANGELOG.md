@@ -32,6 +32,14 @@ Quant-lab repo's `docs/PLATFORM.md`.
   `qmd-record check` (live book vs REST snapshots, replayed files vs live book). New `[stream]` extra
   (`websockets`, `pyarrow`); the core does not import it.
 
+- **`Dataset.BOOK`**: `order_book(symbol, depth)` on Lighter, Hyperliquid, Binance, Aster and Extended — a
+  live snapshot `{"bids", "asks", "ts", "venue", "symbol"}` (best first, orders aggregated by price) that
+  feeds `paper_execution` / `market_impact` directly; built by `schema.make_book`.
+
+### Confirmed
+- Lighter funding sign: `direction == "long"` means longs pay (websocket `funding_rate` is signed and
+  matches the REST rate on every market checked).
+
 ### Unchanged
 - The v0.2 loaders and `funding_diff`.
 

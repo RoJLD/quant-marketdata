@@ -38,6 +38,7 @@ from quant_marketdata.venues.schema import (
     Dataset,
     empty_frame,
     finalize_funding,
+    make_book,
 )
 
 BASE_URL = "https://fapi.binance.com/fapi/v1"
@@ -80,10 +81,14 @@ def _ms(value: datetime | pd.Timestamp) -> int:
     return int(pd.Timestamp(value).value // 1_000_000)
 
 
+# Book depths the depth endpoint accepts.
+DEPTH_LIMITS = (5, 10, 20, 50, 100, 500, 1000)
+
+
 class BinanceVenue:
     name = "binance"
     capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
-                              Dataset.SPECS})
+                              Dataset.SPECS, Dataset.BOOK})
     resolutions = tuple(RESOLUTION_SECONDS)
     base_url = BASE_URL
     max_rate: Optional[float] = MAX_RATE
@@ -192,6 +197,15 @@ class BinanceVenue:
         if frame.empty:
             return empty_frame(CANDLE_COLUMNS)
         return frame.loc[pd.Timestamp(start):pd.Timestamp(end)]
+
+    def order_book(self, symbol: str, depth: int = 50) -> dict:
+        """Live book from ``depth`` (Binance-compatible: Binance and Aster)."""
+        require(self, Dataset.BOOK)
+        limit = next((n for n in DEPTH_LIMITS if n >= depth), DEPTH_LIMITS[-1])
+        payload = self.client.get("depth", {"symbol": symbol, "limit": limit})
+        stamp = payload.get("T") or payload.get("E")
+        return make_book(payload.get("bids") or [], payload.get("asks") or [], venue=self.name, symbol=symbol,
+                         depth=depth, ts=pd.Timestamp(int(stamp), unit="ms") if stamp else None)
 
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         # openInterestHist only reaches 30 days back: no history worth storing.

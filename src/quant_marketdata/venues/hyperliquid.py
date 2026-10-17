@@ -33,6 +33,7 @@ from quant_marketdata.venues.schema import (
     Dataset,
     empty_frame,
     finalize_funding,
+    make_book,
 )
 
 BASE_URL = "https://api.hyperliquid.xyz"
@@ -61,7 +62,8 @@ def _ms(value: datetime | pd.Timestamp) -> int:
 
 class HyperliquidVenue:
     name = "hyperliquid"
-    capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.SPECS})
+    capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.SPECS,
+                              Dataset.BOOK})
     resolutions = tuple(RESOLUTION_SECONDS)
 
     def __init__(self, client: Optional[JsonClient] = None, *, rate: float = 2.0) -> None:
@@ -134,6 +136,15 @@ class HyperliquidVenue:
         if frame.empty:
             return empty_frame(CANDLE_COLUMNS)
         return frame.loc[pd.Timestamp(start):pd.Timestamp(end)]
+
+    def order_book(self, symbol: str, depth: int = 50) -> dict:
+        """Live book from the ``l2Book`` info request (20 aggregated levels per side at most)."""
+        require(self, Dataset.BOOK)
+        payload = self._info({"type": "l2Book", "coin": symbol})
+        bids, asks = (payload.get("levels") or [[], []])[:2]
+        return make_book([(lv["px"], lv["sz"]) for lv in bids], [(lv["px"], lv["sz"]) for lv in asks],
+                         venue=self.name, symbol=symbol, depth=depth,
+                         ts=pd.Timestamp(int(payload["time"]), unit="ms") if payload.get("time") else None)
 
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         require(self, Dataset.DAILY_METRICS)  # no open-interest history in the public API
