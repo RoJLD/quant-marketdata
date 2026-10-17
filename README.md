@@ -79,6 +79,24 @@ btc = load_funding("BTC-USD-PERP")        # every venue's funding events, with a
 
 Live API tests are opt-in: `pytest -m live`.
 
+### Live streams (`quant_marketdata.venues.stream`)
+
+REST APIs keep no history of the order book, intraday open interest or mark price, so they are recorded
+live from the venue websocket (Lighter for now) into `venues/<venue>/stream/<channel>/<SYMBOL>/<day>.parquet`.
+
+```bash
+pip install "quant-marketdata[stream]"
+qmd-record run --venue lighter --symbols BTC ETH            # until Ctrl+C (--duration N for N seconds)
+qmd-record check --venue lighter --symbols BTC ETH         # live book vs REST snapshots, files vs live book
+```
+
+```python
+from quant_marketdata.venues.stream import book_at, read_stream
+trades = read_stream("lighter", "trades", "BTC", start="2026-10-17")
+liquidations = trades[trades["type"] == "liquidation"]
+book = book_at(read_stream("lighter", "order_book", "BTC", start="2026-10-17"))   # .levels("bid", 10)
+```
+
 ## Scope
 
 Deliberately focused on the cost-realism primitives shared by research (realism experiments) and live
