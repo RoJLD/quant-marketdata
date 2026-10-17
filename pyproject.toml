@@ -32,10 +32,12 @@ dependencies = ["pandas>=2.0"]
 [project.optional-dependencies]
 live = ["ccxt>=4.2"]
 store = ["pyarrow>=14"]
-dev = ["pytest>=7", "ruff>=0.4", "pyarrow>=14"]
+stream = ["pyarrow>=14", "websockets>=12"]
+dev = ["pytest>=7", "ruff>=0.4", "pyarrow>=14", "websockets>=12"]
 
 [project.scripts]
 qmd-download = "quant_marketdata.venues.download:main"
+qmd-record = "quant_marketdata.venues.stream.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

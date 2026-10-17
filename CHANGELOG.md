@@ -23,6 +23,15 @@ Quant-lab repo's `docs/PLATFORM.md`.
 - An equivalence test: the Binance and Hyperliquid adapters reproduce the daily means of
   `load_binance_funding` / `load_hl_funding` on a recorded window.
 
+- **`quant_marketdata.venues.stream`**: continuous websocket recording of the order book (snapshot, deltas,
+  hourly and daily checkpoints), trades (with `type`: trade, liquidation, deleverage, market-settlement) and
+  market stats, into the shared store (`venues/<venue>/stream/…`), with the canonical `instrument_id` on every
+  row. Venue-agnostic recorder (order book continuity by nonce chain, resubscription on gaps, reconnection
+  with backoff, trade de-duplication, part files compacted daily, a `_health.json` freshness file) and a
+  Lighter protocol, without the Lighter SDK. Ported from the Quant_Lighter prototype. `qmd-record run` and
+  `qmd-record check` (live book vs REST snapshots, replayed files vs live book). New `[stream]` extra
+  (`websockets`, `pyarrow`); the core does not import it.
+
 ### Unchanged
 - The v0.2 loaders and `funding_diff`.
 
