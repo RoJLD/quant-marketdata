@@ -35,6 +35,7 @@ from quant_marketdata.venues.schema import (
     Dataset,
     empty_frame,
     finalize_funding,
+    make_book,
 )
 
 BASE_URL = "https://api.starknet.extended.exchange/api/v1"
@@ -93,7 +94,7 @@ def asset_class(market: Dict[str, Any]) -> Optional[str]:
 class ExtendedVenue:
     name = "extended"
     capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
-                              Dataset.SPECS})
+                              Dataset.SPECS, Dataset.BOOK})
     resolutions = tuple(RESOLUTIONS)
 
     def __init__(self, client: Optional[JsonClient] = None, *, rate: float = 2.0) -> None:
@@ -172,6 +173,14 @@ class ExtendedVenue:
         if frame.empty:
             return empty_frame(CANDLE_COLUMNS)
         return frame.loc[pd.Timestamp(start):pd.Timestamp(end)]
+
+    def order_book(self, symbol: str, depth: int = 50) -> dict:
+        """Live book from ``info/markets/<market>/orderbook`` (aggregated levels)."""
+        require(self, Dataset.BOOK)
+        data = self.client.get(f"info/markets/{symbol}/orderbook").get("data") or {}
+        return make_book([(lv["price"], lv["qty"]) for lv in data.get("bid") or []],
+                         [(lv["price"], lv["qty"]) for lv in data.get("ask") or []],
+                         venue=self.name, symbol=symbol, depth=depth)
 
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         require(self, Dataset.DAILY_METRICS)  # no open-interest history in the public API

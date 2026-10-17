@@ -34,6 +34,10 @@ class Venue(Protocol):
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         """Daily open interest and volume since listing, ``DAILY_METRICS_COLUMNS``."""
 
+    def order_book(self, symbol: str, depth: int = 50) -> dict:
+        """Live book ``{"bids": [(price, size)], "asks": [...], "ts", "venue", "symbol"}``, best first
+        (``schema.make_book``), directly usable by ``paper_execution`` / ``market_impact``."""
+
     def specs(self) -> pd.DataFrame:
         """Current specs of every instrument (fees, margins, sizes, status), one row per instrument."""
 

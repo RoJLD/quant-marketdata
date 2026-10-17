@@ -10,7 +10,9 @@ API quirks this adapter absorbs (verified 2026-10-15):
 - Mark price history only starts around 2025-08-25: the first day is located with a coarse probe instead
   of paging through months of empty windows.
 - ``fundings`` is hourly, ``timestamp`` in seconds; ``rate`` is **unsigned, in percent per hour**, with
-  the sign in ``direction`` (``long`` taken as "longs pay"; see the spec's open question). The rate is
+  the sign in ``direction``: ``long`` = longs pay. Confirmed 2026-10-17: the websocket ``market_stats``
+  ``funding_rate`` is signed and equals the REST rate with sign + for ``long``, - for ``short`` on 7/7
+  markets checked (and every ``short`` market had a negative mark-index premium). The rate is
   rounded to 4 decimals of a percent, i.e. a 1e-6/h (~0.88 %/yr) grid.
 - ``exchangeMetrics`` open interest is the notional of **both sides**; series are padded with zeros before
   listing, and an unknown symbol yields zeros rather than an error.
@@ -34,6 +36,7 @@ from quant_marketdata.venues.schema import (
     Dataset,
     empty_frame,
     finalize_funding,
+    make_book,
 )
 
 BASE_URL = "https://mainnet.zklighter.elliot.ai/api/v1"
@@ -175,6 +178,16 @@ class LighterVenue:
         if frame.empty:
             return empty_frame(CANDLE_COLUMNS)
         return frame.loc[pd.Timestamp(start):pd.Timestamp(end)]
+
+    def order_book(self, symbol: str, depth: int = 50) -> dict:
+        """Live book from ``orderBookOrders`` (individual orders, up to 250 per side, aggregated by price)."""
+        require(self, Dataset.BOOK)
+        payload = _check(self.client.get("orderBookOrders", {"market_id": self.market_id(symbol), "limit": 250}))
+
+        def orders(side):
+            return [(o["price"], o["remaining_base_amount"]) for o in payload.get(side) or []]
+
+        return make_book(orders("bids"), orders("asks"), venue=self.name, symbol=symbol, depth=depth)
 
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         require(self, Dataset.DAILY_METRICS)

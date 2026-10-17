@@ -25,6 +25,7 @@ class Dataset(str, Enum):
     MARK_CANDLES = "mark_candles"
     DAILY_METRICS = "daily_metrics"
     SPECS = "specs"
+    BOOK = "book"  # live order book snapshot (not stored: the stream recorder keeps the history)
 
 
 ASSET_CLASSES = frozenset({"crypto", "equity", "etf", "index", "rates", "commodity", "fx", "private"})
@@ -58,6 +59,23 @@ FUNDING_COLUMNS = ["rate_raw", "direction_raw", "interval_h", "rate", "rate_1h",
 CANDLE_COLUMNS = ["open", "high", "low", "close", "volume_base", "volume_quote", "price_type"]
 
 DAILY_METRICS_COLUMNS = ["open_interest_usd", "volume_usd", "oi_convention"]
+
+
+def make_book(bids, asks, *, venue: str, symbol: str, ts=None, depth: int | None = None) -> dict:
+    """Order book snapshot in the format of the friction functions (``paper_execution``,
+    ``market_impact``): ``{"bids": [(price, size), ...], "asks": [...]}`` best price first, plus ``ts``,
+    ``venue`` and ``symbol``. Individual orders at one price are aggregated; empty levels are dropped."""
+
+    def side(levels, best_high):
+        agg: dict = {}
+        for price, size in levels:
+            price, size = float(price), float(size)
+            if size > 0:
+                agg[price] = agg.get(price, 0.0) + size
+        return sorted(agg.items(), reverse=best_high)[:depth]
+
+    stamp = pd.Timestamp.now(tz="UTC").tz_localize(None) if ts is None else pd.Timestamp(ts)
+    return {"bids": side(bids, True), "asks": side(asks, False), "ts": stamp, "venue": venue, "symbol": symbol}
 
 
 def empty_frame(columns: list[str], index_name: str = "ts") -> pd.DataFrame:
@@ -126,4 +144,5 @@ __all__ = [
     "empty_frame",
     "finalize_funding",
     "funding_grid",
+    "make_book",
 ]
