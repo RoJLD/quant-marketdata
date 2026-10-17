@@ -6,9 +6,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 The shared market- and funding-data layer of the platform; the cross-repo dependency map lives in the
 Quant-lab repo's `docs/PLATFORM.md`.
 
-## [Unreleased]
+## [0.3.0] — 2026-10-17
+
+The multi-venue data layer: one `Venue` protocol for Lighter, Hyperliquid, Binance USD-M, Extended and Aster,
+live order book snapshots and a websocket recorder. Additive only: v0.2 consumers keep working unchanged.
 
 ### Added
+- **`quant_marketdata.venues`**, a venue-agnostic data layer: the `Venue` protocol with declared
+  capabilities, canonical schemas (instruments, funding normalized per hour, last/mark candles, daily
+  OI/volume, specs snapshots), an instrument registry with explicit overrides and point-in-time
+  listing/delisting, an incremental Parquet store (`QUANT_MARKETDATA_ROOT`), a rate-limited stdlib JSON
+  client with backoff, and the `qmd-download` command.
+- **Lighter adapter** over the public REST API (no SDK): perps, candles (1m-1d), mark candles, hourly
+  funding, daily open interest and volume, market specs.
+- Optional `[store]` extra (pyarrow).
 - **Venue adapters for Hyperliquid, Binance (USD-M futures), Extended and Aster**, on the Lighter
   template (stdlib JSON client, no SDK, quirks in each module docstring, parsers tested on recorded
   payloads): funding normalized to the canonical schema, last/mark candles, specs snapshots.
@@ -39,21 +50,6 @@ Quant-lab repo's `docs/PLATFORM.md`.
 ### Confirmed
 - Lighter funding sign: `direction == "long"` means longs pay (websocket `funding_rate` is signed and
   matches the REST rate on every market checked).
-
-### Unchanged
-- The v0.2 loaders and `funding_diff`.
-
-## [0.3.0] — 2026-10-15
-
-### Added
-- **`quant_marketdata.venues`**, a venue-agnostic data layer: the `Venue` protocol with declared
-  capabilities, canonical schemas (instruments, funding normalized per hour, last/mark candles, daily
-  OI/volume, specs snapshots), an instrument registry with explicit overrides and point-in-time
-  listing/delisting, an incremental Parquet store (`QUANT_MARKETDATA_ROOT`), a rate-limited stdlib JSON
-  client with backoff, and the `qmd-download` command.
-- **Lighter adapter** over the public REST API (no SDK): perps, candles (1m-1d), mark candles, hourly
-  funding, daily open interest and volume, market specs.
-- Optional `[store]` extra (pyarrow).
 
 ### Unchanged
 - The v0.2 loaders (`load_binance_funding`, `load_hl_funding`) and `funding_diff`: consumers keep working
