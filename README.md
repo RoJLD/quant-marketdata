@@ -40,6 +40,34 @@ print(slippage_bps(vwap, mid=100.05, side="buy"))            # adverse deviation
 print(impact_beyond_book(book, notional=1_000_000, side="buy"))  # sqrt-law impact beyond displayed depth
 ```
 
+## Venue data layer (`quant_marketdata.venues`)
+
+One `Venue` protocol, canonical schemas, an instrument registry and an incremental Parquet store, so every
+venue's history lands in the same shape. Adapters: **Lighter** (more to come, see the Quant-lab spec
+`2026-10-15-multi-venue-data-layer-design.md`).
+
+- **Funding normalized per hour**: one row per settlement with the native values kept (`rate_raw`,
+  `direction_raw`), `rate` as a signed fraction over the interval (**positive = longs pay**), `interval_h`,
+  `rate_1h` (the cross-venue comparison column) and `apr`. `funding_grid(events, "settlement" | "accrual")`
+  gives the cash-flow or the level view on an hourly grid.
+- **Registry**: canonical ids `<BASE>-<QUOTE>-PERP` (`1000BONK` -> `BONK-USD-PERP`, multiplier 1000),
+  asset classes, point-in-time listing/delisting. Ambiguous symbols are reported as unresolved, never
+  guessed; explicit decisions live in `venues/registry_overrides.py`.
+- **Store**: root = `--root` -> `$QUANT_MARKETDATA_ROOT` -> `./data/marketdata`; re-running a download only
+  fetches what is new.
+
+```bash
+pip install "quant-marketdata[store]"   # pyarrow for the Parquet store
+qmd-download --venue lighter --symbols BTC ETH --resolutions 1h 1d --since 2026-01-01
+```
+
+```python
+from quant_marketdata.venues import load_funding, load_registry
+btc = load_funding("BTC-USD-PERP")        # every venue's funding events, with a `venue` column
+```
+
+Live API tests are opt-in: `pytest -m live`.
+
 ## Scope
 
 Deliberately focused on the cost-realism primitives shared by research (realism experiments) and live

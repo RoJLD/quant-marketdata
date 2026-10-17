@@ -1,0 +1,21 @@
+{
+ "code": 200,
+ "metrics": [
+  {
+   "timestamp": 1736985600,
+   "data": 0
+  },
+  {
+   "timestamp": 1737072000,
+   "data": 0
+  },
+  {
+   "timestamp": 1737158400,
+   "data": 43898.85
+  },
+  {
+   "timestamp": 1737244800,
+   "data": 42636.84
+  }
+ ]
+}
