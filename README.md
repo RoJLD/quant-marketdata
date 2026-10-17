@@ -43,8 +43,18 @@ print(impact_beyond_book(book, notional=1_000_000, side="buy"))  # sqrt-law impa
 ## Venue data layer (`quant_marketdata.venues`)
 
 One `Venue` protocol, canonical schemas, an instrument registry and an incremental Parquet store, so every
-venue's history lands in the same shape. Adapters: **Lighter** (more to come, see the Quant-lab spec
-`2026-10-15-multi-venue-data-layer-design.md`).
+venue's history lands in the same shape. Adapters, all over public JSON APIs without venue SDKs (see the
+Quant-lab spec `2026-10-15-multi-venue-data-layer-design.md`):
+
+| Venue | Native symbol | Funding | Datasets |
+|---|---|---|---|
+| `lighter` | `BTC` | 1h, unsigned % + `direction` | funding, candles, mark candles, daily OI/volume, specs |
+| `hyperliquid` | `BTC`, `kPEPE` | 1h | funding, candles (last 5000 per interval), specs |
+| `binance` (USD-M) | `BTCUSDT` | per symbol, 8h/4h/1h, changes over time | funding, candles, mark candles, specs |
+| `extended` | `BTC-USD` | 1h | funding, candles, mark candles, specs |
+| `aster` | `BTCUSDT` | per symbol, 8h/4h/2h/1h | funding, candles, mark candles, specs |
+
+Each adapter's module docstring lists the API quirks it absorbs.
 
 - **Funding normalized per hour**: one row per settlement with the native values kept (`rate_raw`,
   `direction_raw`), `rate` as a signed fraction over the interval (**positive = longs pay**), `interval_h`,
@@ -59,6 +69,7 @@ venue's history lands in the same shape. Adapters: **Lighter** (more to come, se
 ```bash
 pip install "quant-marketdata[store]"   # pyarrow for the Parquet store
 qmd-download --venue lighter --symbols BTC ETH --resolutions 1h 1d --since 2026-01-01
+qmd-download --venue binance --symbols BTCUSDT ETHUSDT --datasets funding
 ```
 
 ```python

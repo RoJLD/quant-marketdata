@@ -15,13 +15,15 @@ from typing import Dict
 Override = Dict[str, object]
 
 
-def _classify(symbols: str, asset_class: str, why: str, *, ref: bool = False) -> Dict[str, Override]:
+def _classify(symbols: str, asset_class: str, why: str, *, ref: bool = False,
+              suffix: str = "") -> Dict[str, Override]:
+    """Entries for ``symbols`` (bare names; ``suffix`` turns them into native symbols, e.g. ``-USD``)."""
     entries: Dict[str, Override] = {}
     for symbol in symbols.split():
         entry: Override = {"asset_class": asset_class, "why": why}
         if ref:
             entry["underlying_ref"] = symbol
-        entries[symbol] = entry
+        entries[symbol + suffix] = entry
     return entries
 
 
@@ -54,7 +56,41 @@ LIGHTER: Dict[str, Override] = {
     },
 }
 
+_GOLD_TOKEN: Override = {
+    "asset_class": "crypto",
+    "underlying_ref": "XAU",
+    "why": "Gold-backed token: crypto venue risk, gold exposure",
+}
+
+# Binance declares the class of every market (underlyingType); only the gold token needs a decision.
+BINANCE: Dict[str, Override] = {
+    "PAXGUSDT": _GOLD_TOKEN,
+}
+
+# Aster tags PAXG as "Commodities", like spot gold: it is a token.
+ASTER: Dict[str, Override] = {
+    "PAXGUSDT": _GOLD_TOKEN,
+}
+
+HYPERLIQUID: Dict[str, Override] = {
+    "PAXG": _GOLD_TOKEN,
+}
+
+EXTENDED: Dict[str, Override] = {
+    "PAXG-USD": _GOLD_TOKEN,
+    "XAUT-USD": {**_GOLD_TOKEN, "why": "Tether gold token: crypto venue risk, gold exposure"},
+    # The "ETF/Index" sub-category mixes both classes.
+    **_classify("SPX500m TECH100m KR200 JP225", "index", "Equity index perp (Extended ETF/Index)",
+                ref=True, suffix="-USD"),
+    **_classify("SOXL EWZ KORU DRAM LYTE", "etf", "Exchange-traded fund perp (Extended ETF/Index)",
+                ref=True, suffix="-USD"),
+}
+
 OVERRIDES: Dict[str, Dict[str, Override]] = {
+    "aster": ASTER,
+    "binance": BINANCE,
+    "extended": EXTENDED,
+    "hyperliquid": HYPERLIQUID,
     "lighter": LIGHTER,
 }
 

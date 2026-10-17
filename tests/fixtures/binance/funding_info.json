@@ -1,0 +1,122 @@
+[
+ {
+  "symbol": "GTCUSDT",
+  "adjustedFundingRateCap": "0.02000000",
+  "adjustedFundingRateFloor": "-0.02000000",
+  "fundingIntervalHours": 4,
+  "disclaimer": false,
+  "updateTime": 1791950460152
+ },
+ {
+  "symbol": "BTCDOMUSDT",
+  "adjustedFundingRateCap": "0.03000000",
+  "adjustedFundingRateFloor": "-0.03000000",
+  "fundingIntervalHours": 8,
+  "disclaimer": false,
+  "updateTime": 1696841455613
+ },
+ {
+  "symbol": "1000PEPEUSDT",
+  "adjustedFundingRateCap": "0.02000000",
+  "adjustedFundingRateFloor": "-0.02000000",
+  "fundingIntervalHours": 8,
+  "disclaimer": false,
+  "updateTime": 1697703241715
+ },
+ {
+  "symbol": "1MBABYDOGEUSDT",
+  "adjustedFundingRateCap": "0.02000000",
+  "adjustedFundingRateFloor": "-0.02000000",
+  "fundingIntervalHours": 4,
+  "disclaimer": false,
+  "updateTime": 1726486552604
+ },
+ {
+  "symbol": "1000000MOGUSDT",
+  "adjustedFundingRateCap": "0.02000000",
+  "adjustedFundingRateFloor": "-0.02000000",
+  "fundingIntervalHours": 4,
+  "disclaimer": false,
+  "updateTime": 1730982779981
+ },
+ {
+  "symbol": "PAXGUSDT",
+  "adjustedFundingRateCap": "0.02000000",
+  "adjustedFundingRateFloor": "-0.02000000",
+  "fundingIntervalHours": 4,
+  "disclaimer": false,
+  "updateTime": 1743071583902
+ },
+ {
+  "symbol": "币安人生USDT",
+  "adjustedFundingRateCap": "0.02000000",
+  "adjustedFundingRateFloor": "-0.02000000",
+  "fundingIntervalHours": 4,
+  "disclaimer": false,
+  "updateTime": 1760955417544
+ },
+ {
+  "symbol": "XAUUSDT",
+  "adjustedFundingRateCap": "0.00500000",
+  "adjustedFundingRateFloor": "-0.00500000",
+  "fundingIntervalHours": 4,
+  "disclaimer": false,
+  "updateTime": 1769796333728
+ },
+ {
+  "symbol": "TSLAUSDT",
+  "adjustedFundingRateCap": "0.02000000",
+  "adjustedFundingRateFloor": "-0.02000000",
+  "fundingIntervalHours": 8,
+  "disclaimer": false,
+  "updateTime": 1769775454495
+ },
+ {
+  "symbol": "OPENAIUSDT",
+  "adjustedFundingRateCap": "0.02000000",
+  "adjustedFundingRateFloor": "-0.02000000",
+  "fundingIntervalHours": 8,
+  "disclaimer": false,
+  "updateTime": 1779779942571
+ },
+ {
+  "symbol": "ETHUSDT",
+  "adjustedFundingRateCap": "0.00300",
+  "adjustedFundingRateFloor": "-0.00300",
+  "fundingIntervalHours": 8,
+  "disclaimer": true,
+  "updateTime": null
+ },
+ {
+  "symbol": "BTCUSDC",
+  "adjustedFundingRateCap": "0.00300",
+  "adjustedFundingRateFloor": "-0.00300",
+  "fundingIntervalHours": 8,
+  "disclaimer": true,
+  "updateTime": null
+ },
+ {
+  "symbol": "BTCUSDT",
+  "adjustedFundingRateCap": "0.00300",
+  "adjustedFundingRateFloor": "-0.00300",
+  "fundingIntervalHours": 8,
+  "disclaimer": true,
+  "updateTime": null
+ },
+ {
+  "symbol": "BTCU",
+  "adjustedFundingRateCap": "0.00375",
+  "adjustedFundingRateFloor": "-0.00375",
+  "fundingIntervalHours": 8,
+  "disclaimer": true,
+  "updateTime": null
+ },
+ {
+  "symbol": "ETHBTC",
+  "adjustedFundingRateCap": "0.00375",
+  "adjustedFundingRateFloor": "-0.00375",
+  "fundingIntervalHours": 8,
+  "disclaimer": true,
+  "updateTime": null
+ }
+]

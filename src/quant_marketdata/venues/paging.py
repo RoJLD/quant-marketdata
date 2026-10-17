@@ -49,9 +49,38 @@ def first_non_empty(
     return None
 
 
+def forward_fetch(
+    fetch_from: Callable[[int], pd.DataFrame],
+    start: int,
+    end: int,
+    page_size: int,
+    *,
+    unit: str = "ms",
+) -> pd.DataFrame:
+    """Cursor pagination for APIs that return the **oldest** ``page_size`` points from a start time.
+
+    ``fetch_from(cursor)`` returns a time-indexed page; the next cursor is one ``unit`` past its last
+    timestamp. Stops on a short page, an empty page or once the cursor passes ``end``.
+    """
+    pages, cursor = [], start
+    while cursor <= end:
+        page = fetch_from(cursor)
+        if page.empty:
+            break
+        pages.append(page)
+        nxt = int(page.index.max().value // pd.Timedelta(1, unit=unit).value) + 1
+        if len(page) < page_size or nxt <= cursor:
+            break
+        cursor = nxt
+    if not pages:
+        return pd.DataFrame()
+    frame = pd.concat(pages)
+    return frame[~frame.index.duplicated(keep="last")].sort_index()
+
+
 def window_count(start: int, end: int, step: int, cap: int) -> int:
     """Number of points of period ``step`` in ``[start, end]`` (bounds inclusive), capped at ``cap``."""
     return max(1, min(cap, (end - start) // step + 1))
 
 
-__all__ = ["first_non_empty", "paged_fetch", "window_count", "windows"]
+__all__ = ["first_non_empty", "forward_fetch", "paged_fetch", "window_count", "windows"]

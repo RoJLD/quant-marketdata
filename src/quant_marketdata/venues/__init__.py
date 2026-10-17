@@ -1,5 +1,6 @@
 """Venue-agnostic market-data layer: one ``Venue`` protocol, canonical schemas, an instrument registry and
-an incremental Parquet store. Adapters register themselves on import (Lighter for now).
+an incremental Parquet store. Adapters register themselves on import: Lighter, Hyperliquid, Binance
+(USD-M futures), Extended and Aster.
 
 Read side::
 
@@ -13,10 +14,13 @@ from typing import Optional, Sequence
 
 import pandas as pd
 
-from quant_marketdata.venues import lighter as _lighter  # noqa: F401  (registers the adapter)
+from quant_marketdata.venues.aster import AsterVenue
 from quant_marketdata.venues.base import Venue, available_venues, get_venue, register_venue
+from quant_marketdata.venues.binance import BinanceVenue
 from quant_marketdata.venues.download import DownloadPlan, DownloadResult, download_venue
+from quant_marketdata.venues.extended import ExtendedVenue
 from quant_marketdata.venues.http import HttpError, JsonClient, RateLimiter
+from quant_marketdata.venues.hyperliquid import HyperliquidVenue
 from quant_marketdata.venues.lighter import LighterVenue
 from quant_marketdata.venues.registry import RegistryBuild, resolve, update_registry
 from quant_marketdata.venues.schema import (
@@ -61,10 +65,14 @@ def load_funding(instrument_id: str, venues: Optional[Sequence[str]] = None, roo
 
 __all__ = [
     "ASSET_CLASSES",
+    "AsterVenue",
+    "BinanceVenue",
     "Dataset",
     "DownloadPlan",
     "DownloadResult",
+    "ExtendedVenue",
     "HttpError",
+    "HyperliquidVenue",
     "JsonClient",
     "LighterVenue",
     "ROOT_ENV",
