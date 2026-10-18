@@ -53,16 +53,21 @@ Quant-lab spec `2026-10-15-multi-venue-data-layer-design.md`):
 | `binance` (USD-M) | `BTCUSDT` | per symbol, 8h/4h/1h, changes over time | funding, candles, mark candles, specs |
 | `extended` | `BTC-USD` | 1h | funding, candles, mark candles, specs |
 | `aster` | `BTCUSDT` | per symbol, 8h/4h/2h/1h | funding, candles, mark candles, specs |
+| `paradex` (perps) | `BTC-USD-PERP`, `kPEPE-USD-PERP` | continuous; hourly events from the funding index | funding (from 2024-03-12), candles (1m-1h), mark candles, specs |
 
-Each adapter's module docstring lists the API quirks it absorbs.
+Each adapter's module docstring lists the API quirks it absorbs. Paradex accrues funding continuously:
+its funding index is sampled at every whole hour and each hour becomes one settlement-equivalent event,
+`rate = Δindex / price` (one request per hour of history, ~11 min per market-year with `--rate 20`).
 
 - **Funding normalized per hour**: one row per settlement with the native values kept (`rate_raw`,
   `direction_raw`), `rate` as a signed fraction over the interval (**positive = longs pay**), `interval_h`,
   `rate_1h` (the cross-venue comparison column) and `apr`. `funding_grid(events, "settlement" | "accrual")`
   gives the cash-flow or the level view on an hourly grid.
 - **Registry**: canonical ids `<BASE>-<QUOTE>-PERP` (`1000BONK` -> `BONK-USD-PERP`, multiplier 1000),
-  asset classes, point-in-time listing/delisting. Ambiguous symbols are reported as unresolved, never
-  guessed; explicit decisions live in `venues/registry_overrides.py`.
+  asset classes, point-in-time listing/delisting. A contract on a restricted trading session, as the
+  venue declares it, is its own instrument (`ADBE-USD-PERP-24X5`, `ADSK-USD-PERP-NOOVERNIGHT`).
+  Ambiguous symbols are reported as unresolved with a reason, never guessed; explicit decisions live in
+  `venues/registry_overrides.py`.
 - **Store**: root = `--root` -> `$QUANT_MARKETDATA_ROOT` -> `./data/marketdata`; re-running a download only
   fetches what is new.
 
@@ -70,6 +75,7 @@ Each adapter's module docstring lists the API quirks it absorbs.
 pip install "quant-marketdata[store]"   # pyarrow for the Parquet store
 qmd-download --venue lighter --symbols BTC ETH --resolutions 1h 1d --since 2026-01-01
 qmd-download --venue binance --symbols BTCUSDT ETHUSDT --datasets funding
+qmd-download --venue paradex --symbols BTC-USD-PERP --datasets funding --since 2026-01-01 --rate 20
 ```
 
 ```python

@@ -1,4 +1,5 @@
-"""Venue layer core: funding normalization, hourly grids, HTTP pacing/retries, pagination, store (no network)."""
+"""Venue layer core: funding normalization, hourly grids, HTTP pacing/retries, pagination, store, registry
+decisions (no network)."""
 
 from __future__ import annotations
 
@@ -11,6 +12,8 @@ import pytest
 
 from quant_marketdata.venues.http import HttpError, JsonClient, RateLimiter
 from quant_marketdata.venues.paging import first_non_empty, paged_fetch, window_count, windows
+from quant_marketdata.venues.registry import resolve
+from quant_marketdata.venues.registry_overrides import OVERRIDES, UNRESOLVED
 from quant_marketdata.venues.schema import FUNDING_COLUMNS, Dataset, finalize_funding, funding_grid
 from quant_marketdata.venues.store import ROOT_ENV, VenueStore, resolve_root
 
@@ -172,3 +175,16 @@ def test_store_merge_newer_rows_win(tmp_path):
     assert VenueStore.last_timestamp(path) == pd.Timestamp(120, unit="s")
     assert VenueStore.row_count(path) == 3
     assert not path.with_suffix(".parquet.tmp").exists()
+
+
+# -- registry decisions ----------------------------------------------------------------------------
+
+
+def test_unresolved_decisions_win_over_rules_and_never_overlap_overrides():
+    for venue, decided in UNRESOLVED.items():
+        assert not set(decided) & set(OVERRIDES.get(venue, {})), venue
+    snapshot = pd.DataFrame({"venue_symbol": ["BTC", "ETH"], "venue": "lighter", "status": "active"})
+    build = resolve("lighter", snapshot, decided={"lighter": {"ETH": "decided: test"}})
+    assert build.instruments["venue_symbol"].tolist() == ["BTC"]  # the rule would have parsed ETH
+    assert build.unresolved.to_dict("records") == [
+        {"venue": "lighter", "venue_symbol": "ETH", "reason": "decided: test"}]

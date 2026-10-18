@@ -10,7 +10,7 @@ import pytest
 
 from quant_marketdata.venues import get_venue
 from quant_marketdata.venues.extended import ExtendedVenue, parse_candles, parse_funding
-from quant_marketdata.venues.registry import parse_extended, resolve
+from quant_marketdata.venues.registry import parse_extended, resolve, session_suffix
 
 FIXTURES = Path(__file__).parent / "fixtures" / "extended"
 HOUR_MS = 3_600_000
@@ -104,8 +104,43 @@ def test_instruments_classes_and_registry():
     assert rows.loc["USDJPY-USD", "instrument_id"] == "USD-JPY-PERP"
     assert rows.loc["SPX500m-USD", "asset_class"] == "index"
     assert rows.loc["PAXG-USD", "underlying_ref"] == "XAU"
-    assert set(build.unresolved["venue_symbol"]) == {"AAPL_24_5-USD", "PLACE_JPY-USD"}
     assert parse_extended("BTC") is None
+    reasons = build.unresolved.set_index("venue_symbol")["reason"]
+    assert reasons.to_dict() == {
+        "PLACE_JPY-USD": "delisted placeholder market (description PLACE_JPY): no known underlying"}
+
+
+def test_sessions_key_the_id_never_the_name():
+    snapshot = ExtendedVenue(FakeExtended()).instruments().set_index("venue_symbol")
+    assert snapshot.loc["AAPL_24_5-USD", "session"] == "24x7"  # declared CONTINUOUS
+    assert snapshot.loc["ADBE_24_5-USD", "session"] == "24x5"  # WEEKDAYS
+    assert snapshot.loc["ADSK-USD", "session"] == "no-overnight"
+    assert snapshot.loc["AAPL_24_5-USD", "underlying_ref"] == "AAPL"
+    rows = resolve("extended", snapshot.reset_index()).instruments.set_index("venue_symbol")
+    # A "_24_5" name trading continuously is the continuous contract, shared with the other venues.
+    assert rows.loc["AAPL_24_5-USD", "instrument_id"] == "AAPL-USD-PERP"
+    assert rows.loc["ADBE_24_5-USD", "instrument_id"] == "ADBE-USD-PERP-24X5"
+    # Same ticker, two sessions on one venue: two instruments, not a collision.
+    assert rows.loc["ADSK-USD", "instrument_id"] == "ADSK-USD-PERP-NOOVERNIGHT"
+    assert rows.loc["ADSK_24_5-USD", "instrument_id"] == "ADSK-USD-PERP-24X5"
+    assert rows.loc["ADSK_24_5-USD", "status"] == "inactive"
+    assert rows.loc["BTC-USD", "instrument_id"] == "BTC-USD-PERP"
+
+
+def test_an_unknown_session_is_reported_not_guessed():
+    markets = _fixture("markets")
+    btc = next(m for m in markets["data"] if m["name"] == "BTC-USD")
+    btc["tradingHours"] = "WEEKENDS"
+
+    class Renamed(FakeExtended):
+        def get(self, path, params=None):
+            return markets if path == "info/markets" else super().get(path, params)
+
+    build = resolve("extended", ExtendedVenue(Renamed()).instruments())
+    reasons = build.unresolved.set_index("venue_symbol")["reason"]
+    assert reasons["BTC-USD"] == "unknown session 'weekends'"
+    assert "BTC-USD" not in set(build.instruments["venue_symbol"])
+    assert session_suffix(None) == "" and session_suffix("24x7") == "" and session_suffix("x") is None
 
 
 @pytest.mark.live

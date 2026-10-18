@@ -163,6 +163,7 @@ def test_resolve_lighter_snapshot():
     assert by_symbol.loc["EURUSD", "instrument_id"] == "EUR-USD-PERP"
     assert by_symbol.loc["BTC", "settle_asset"] == "USDC"
     assert build.unresolved["venue_symbol"].tolist() == ["SAMSUNGUSD"]
+    assert build.instruments["session"].eq("24x7").all()  # trading_hours declared empty
 
 
 def test_resolve_reports_collisions():
