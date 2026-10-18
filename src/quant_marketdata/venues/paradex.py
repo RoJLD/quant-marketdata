@@ -1,5 +1,5 @@
-"""Paradex (Starknet appchain perp DEX) adapter over the public REST API, without its SDK. Perps only: the
-options (10k+ markets with IV and greeks) are a later phase.
+"""Paradex (Starknet appchain perp DEX) adapter over the public REST API, without its SDK: perps here, the
+dated options in ``paradex_options.py`` (mixed into ``ParadexVenue``).
 
 API quirks this adapter absorbs (verified 2026-10-18):
 
@@ -52,6 +52,7 @@ import pandas as pd
 from quant_marketdata.venues.base import register_venue, require
 from quant_marketdata.venues.http import JsonClient
 from quant_marketdata.venues.paging import paged_fetch
+from quant_marketdata.venues.paradex_options import ParadexOptions
 from quant_marketdata.venues.schema import (
     CANDLE_COLUMNS,
     FUNDING_COLUMNS,
@@ -87,7 +88,7 @@ def asset_class(market: Dict[str, Any]) -> Optional[str]:
     return None  # RWA (classified by overrides) or untagged (the registry defaults it, flagged)
 
 
-class ParadexVenue:
+class ParadexVenue(ParadexOptions):
     name = "paradex"
     capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
                               Dataset.SPECS, Dataset.BOOK})
@@ -162,6 +163,10 @@ class ParadexVenue:
             require(self, Dataset.MARK_CANDLES)
         else:
             raise ValueError(f"price must be 'last' or 'mark', got {price!r}")
+        return self._klines(symbol, resolution, start, end, price)
+
+    def _klines(self, symbol: str, resolution: str, start: datetime, end: datetime,
+                price_kind: str) -> pd.DataFrame:
         if resolution not in RESOLUTION_MINUTES:
             raise ValueError(f"Unsupported resolution {resolution!r}; expected one of {self.resolutions}")
         step = RESOLUTION_MINUTES[resolution] * 60_000
@@ -169,9 +174,9 @@ class ParadexVenue:
         def fetch(a: int, b: int) -> pd.DataFrame:
             payload = self.client.get("markets/klines", {
                 "symbol": symbol, "resolution": RESOLUTION_MINUTES[resolution], "start_at": a,
-                "end_at": b + 1, "price_kind": price,  # end is exclusive: + 1 ms keeps the bar opening at b
+                "end_at": b + 1, "price_kind": price_kind,  # end is exclusive: + 1 ms keeps the bar at b
             })
-            return parse_klines(payload.get("results") or [], price)
+            return parse_klines(payload.get("results") or [], price_kind)
 
         frame = paged_fetch(fetch, _ms(start), _ms(end), step * KLINE_PAGE)
         if frame.empty:

@@ -11,7 +11,9 @@ from statistics import NormalDist
 import pandas as pd
 import pytest
 
-from quant_marketdata.venues.paradex import parse_klines
+from quant_marketdata.venues import UnsupportedDataset
+from quant_marketdata.venues.http import HttpError
+from quant_marketdata.venues.paradex import ParadexVenue, parse_klines
 from quant_marketdata.venues.paradex_options import (
     YEAR_DAYS,
     contract_id,
@@ -192,3 +194,112 @@ def test_trades_and_mark_candles():
     underlying = parse_klines(_fixture("option_underlying_klines")["results"], "underlying")
     assert len(mark) == 3 and mark["volume_quote"].isna().all() and (underlying["price_type"] == "underlying").all()
     assert underlying["close"].iloc[0] > 50_000 > mark["close"].iloc[0]  # spot vs option mark
+
+
+# -- venue methods (fake client) -------------------------------------------------------------------
+
+
+class FakeParadexOptions:
+    """Answers like Paradex for the options endpoints; trades come in pages of ``page`` behind a cursor."""
+
+    def __init__(self, trades=None, page=2):
+        self.trades = trades if trades is not None else _fixture("option_trades")["results"]
+        self.page = page
+        self.calls = []
+        # The venue settles every contract of a (base, expiry date) on the same TWAP.
+        self.settled = {}
+        for p in _fixture("option_settlements"):
+            name = parse_option_name(p["symbol"])
+            self.settled[(name["base"], name["expiry_date"])] = p
+
+    def get(self, path, params=None):
+        params = dict(params or {})
+        self.calls.append((path, params))
+        if path == "markets":
+            return _fixture("option_markets")
+        if path == "markets/summary":
+            assert params == {"market": "ALL"}
+            return _fixture("option_summary")
+        if path == "markets/history":
+            return _fixture("market_history")
+        if path == "markets/settlement-price":
+            name = parse_option_name(params["market"])
+            known = self.settled.get((name["base"], name["expiry_date"])) if name else None
+            if known is None:
+                raise HttpError(404, path, '{"error":"MARKET_NOT_SETTLED"}')
+            twap = float(known["underlying_twap_price"])
+            return {**known, "symbol": params["market"],
+                    "settlement_price": str(payoff(name["option_type"], name["strike"], twap))}
+        if path == "trades":
+            offset = int(params.get("cursor") or 0)
+            hits = [t for t in self.trades if params["start_at"] <= t["created_at"] <= params["end_at"]]
+            hits.sort(key=lambda t: -t["created_at"])
+            chunk = hits[offset: offset + self.page]
+            more = offset + self.page < len(hits)
+            return {"results": chunk, "next": str(offset + self.page) if more else None, "prev": None}
+        if path == "markets/klines":
+            return _fixture(f"option_{params['price_kind']}_klines")
+        raise AssertionError(f"unexpected path {path}")
+
+
+def _trade(market, ts, trade_type="FILL"):
+    return {"id": f"{market}-{ts}", "market": market, "side": "SELL", "size": "1", "price": "10",
+            "created_at": int(pd.Timestamp(ts).value // 10**6), "trade_type": trade_type, "block_id": ""}
+
+
+def test_contracts_and_chain_through_the_venue():
+    client = FakeParadexOptions()
+    venue = ParadexVenue(client)
+    assert set(venue.option_contracts("BTC-USD")["base"]) == {"BTC"}
+    with pytest.raises(UnsupportedDataset, match="registry"):
+        venue.option_contracts(expired=True)
+    chain = venue.option_chain("BTC", ts_snapshot=AS_OF)
+    assert len(chain) == 6 and chain["contract_id"].str.startswith("BTC-USD-").all()
+    assert [path for path, _ in client.calls].count("markets") == 1  # cached since option_contracts
+    week = venue.option_chain("BTC", pd.Timestamp("2026-10-23 08:00"), ts_snapshot=AS_OF)
+    assert len(week) == 5 and week["contract_id"].str.contains("20261023T0800").all()
+    assert [path for path, _ in client.calls].count("markets") == 1
+
+
+def test_chain_refreshes_contracts_once_on_an_unknown_symbol():
+    client = FakeParadexOptions()
+    venue = ParadexVenue(client)
+    venue.option_contracts()
+    venue._option_contracts = venue._option_contracts.iloc[1:]  # a strike listed since
+    assert len(venue.option_chain("BTC", ts_snapshot=AS_OF)) == 6
+    assert [path for path, _ in client.calls].count("markets") == 2
+
+
+def test_option_trades_follow_the_cursor_and_skip_undated_names():
+    trades = [_trade("BTC-USD-23OCT26-82000-C", f"2026-10-18 0{h}:00") for h in range(5)]
+    trades.append(_trade("BTC-USD-113000-C", "2026-10-18 06:00"))  # a 2025 perpetual option
+    client = FakeParadexOptions(trades=trades, page=2)
+    venue = ParadexVenue(client)
+    venue.option_contracts()
+    frame = venue.option_trades("BTC", pd.Timestamp("2026-10-18"), pd.Timestamp("2026-10-18 12:00"))
+    assert len(frame) == 5 and frame["ts"].is_monotonic_increasing
+    assert frame["contract_id"].eq("BTC-USD-20261023T0800-82000-C").all()
+    pages = [p for path, p in client.calls if path == "trades"]
+    assert len(pages) == 3 and pages[0]["base_asset"] == "BTC" and pages[0]["page_size"] == 1000
+
+
+def test_mark_candles_and_settlements_through_the_venue():
+    client = FakeParadexOptions(trades=[
+        _trade("BTC-USD-18OCT26-81000-C", "2026-10-18 08:00:10", "SETTLE_MARKET"),
+        _trade("BTC-USD-18OCT26-82000-P", "2026-10-18 08:00:12", "SETTLE_MARKET"),
+        _trade("BTC-USD-17OCT26-82000-C", "2026-10-17 08:00:05", "SETTLE_MARKET"),  # unsettled in the fake
+    ])
+    venue = ParadexVenue(client)
+    mark = venue.option_mark_candles("BTC-USD-27NOV26-88000-C", "1h", pd.Timestamp("2026-10-18 09:00"),
+                                     pd.Timestamp("2026-10-18 11:00"))
+    assert (mark["price_type"] == "mark").all() and client.calls[-1][1]["price_kind"] == "mark"
+    with pytest.raises(ValueError, match="mark"):
+        venue.option_mark_candles("BTC-USD-27NOV26-88000-C", "1h", AS_OF, AS_OF, price="last")
+    rows = venue.settlements("paradex:BTC", pd.Timestamp("2026-10-17"), pd.Timestamp("2026-10-18 12:00"))
+    assert rows["ts"].tolist() == [pd.Timestamp("2026-10-18 08:00")]  # 17OCT26 answered 404
+    settle_calls = [p["market"] for path, p in client.calls if path == "markets/settlement-price"]
+    assert len(settle_calls) == 2  # one per expiry date, not per contract
+    recent = venue.settlements("ETH")  # from the SETTLED events of markets/history
+    assert recent["ts"].tolist() == [pd.Timestamp("2026-10-18 08:00")]
+    assert recent["settlement_price"].iloc[0] == pytest.approx(2406.5910561466653)
+    assert recent["settlement_index_id"].eq("paradex:ETH").all()

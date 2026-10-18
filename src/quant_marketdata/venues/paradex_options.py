@@ -16,8 +16,11 @@ Conventions (docs ``trading/dated-options/*`` and probes of 2026-10-18; every re
 - **Settlement.** Payoff on the **30-minute TWAP of the Paradex Spot Oracle Price** ending at expiry
   (the index of the perp of the same base). ``markets/settlement-price?market=<symbol>`` serves it after
   expiry, by name (checked back to 26JUN26): ``settlement_price`` is the option's payoff,
-  ``underlying_twap_price`` the TWAP. ``markets/history`` lists ``SETTLED`` events of the last days (one
-  page of at most 5,000 events, ~2.5 days on 2026-10-18). The canonical ``settlement_price`` of a contract
+  ``underlying_twap_price`` the TWAP; expiries before 2026-05-21 answer ``MARKET_NOT_SETTLED`` (dated
+  options started in March 2026). ``markets/history`` lists ``SETTLED`` events of the last days (one page
+  of at most 5,000 events, ~2.5 days on 2026-10-18). Expired names are found in the trade history: every
+  open position settles through a ``SETTLE_MARKET`` trade at the payoff; an expiry with no open position
+  leaves no trade (BTC 2026-10-04), so its fixing is only reachable through a contract the registry saw. The canonical ``settlement_price`` of a contract
   and of a ``Settlement`` row is the TWAP (the index value at the fixing); the payoff is kept as
   ``settlement_payoff_raw`` and equals ``max(0, +-(TWAP - strike))``.
 - **Chain** (``markets/summary?market=ALL``, one ~7 MB call): ``bid``/``ask``/``mark_price``/
@@ -49,12 +52,17 @@ from __future__ import annotations
 import json
 import math
 import re
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 import pandas as pd
 
+from quant_marketdata.venues.http import HttpError
+from quant_marketdata.venues.schema import UnsupportedDataset
+
 VENUE = "paradex"
+TRADE_PAGE = 1000  # the API's maximum page_size for trades
 YEAR_DAYS = 365.0
 SETTLEMENT_METHOD = "twap_30min"
 SETTLEMENT_METHOD_SOURCE = "venue_doc"
@@ -348,9 +356,122 @@ def parse_option_trades(records: Iterable[Mapping[str, Any]],
     return frame.sort_values("ts").reset_index(drop=True) if not frame.empty else frame
 
 
+def _now() -> pd.Timestamp:
+    return pd.Timestamp.now(tz="UTC").tz_localize(None)
+
+
+def _base(underlying: Optional[str]) -> Optional[str]:
+    """``BTC`` or ``BTC-USD`` -> ``BTC``; ``paradex:BTC`` -> ``BTC``."""
+    if underlying is None:
+        return None
+    return underlying.split(":")[-1].split("-")[0]
+
+
+class ParadexOptions:
+    """The dated-options half of ``ParadexVenue``: HTTP on top of the parsers above. Needs ``client``."""
+
+    client: Any
+    _option_contracts: Optional[pd.DataFrame] = None
+    option_unresolved: pd.DataFrame = pd.DataFrame(columns=["venue", "venue_symbol", "reason"])
+
+    def option_contracts(self, underlying: Optional[str] = None, *, expired: bool = False) -> pd.DataFrame:
+        """Live option contracts (``markets``, ~16 MB), optionally of one underlying; the unresolved ones
+        are left in ``option_unresolved``. Paradex drops a contract from ``markets`` at expiry."""
+        if expired:
+            raise UnsupportedDataset("paradex drops expired options from /markets: expired contracts come "
+                                     "from the contract registry, settlements from settlements()")
+        contracts, self.option_unresolved = parse_option_markets(
+            self.client.get("markets").get("results") or [], _now())
+        self._option_contracts = contracts
+        base = _base(underlying)
+        return contracts if base is None or contracts.empty else contracts[contracts["base"] == base]
+
+    def _known_contracts(self, symbols: Iterable[str]) -> pd.DataFrame:
+        """Cached contracts, refreshed once when a symbol is unknown (new strikes list every 8 hours)."""
+        cached = self._option_contracts
+        if cached is None or not set(symbols) <= set(cached["venue_symbol"]) | set(self.option_unresolved["venue_symbol"]):
+            self.option_contracts()
+        return self._option_contracts
+
+    def option_chain(self, underlying: str, expiry: Optional[datetime] = None, *,
+                     ts_snapshot: Optional[pd.Timestamp] = None) -> pd.DataFrame:
+        """Live chain of one underlying from ``markets/summary?market=ALL`` (one ~7 MB call)."""
+        ts_snapshot = _now() if ts_snapshot is None else pd.Timestamp(ts_snapshot)
+        base = _base(underlying)
+        rows = [r for r in self.client.get("markets/summary", {"market": "ALL"}).get("results") or []
+                if str(r.get("symbol", "")).startswith(f"{base}-") and parse_option_name(r["symbol"])]
+        contracts = self._known_contracts(r["symbol"] for r in rows)
+        chain = parse_option_summary(rows, contracts, ts_snapshot)
+        if expiry is not None and not chain.empty:
+            wanted = contracts.loc[contracts["expiry"] == pd.Timestamp(expiry), "venue_symbol"]
+            chain = chain[chain["venue_symbol"].isin(wanted)].reset_index(drop=True)
+        return chain
+
+    def option_trades(self, underlying: str, start: datetime, end: datetime) -> pd.DataFrame:
+        """Trades of every option of one base in ``[start, end]`` (``trades?base_asset=``, newest first,
+        cursor-paged), expired contracts included; ``contract_id`` is set for the live ones only."""
+        records, cursor = [], None
+        params = {"base_asset": _base(underlying), "start_at": int(pd.Timestamp(start).value // 10**6),
+                  "end_at": int(pd.Timestamp(end).value // 10**6), "page_size": TRADE_PAGE}
+        while True:
+            payload = self.client.get("trades", {**params, "cursor": cursor} if cursor else params)
+            records.extend(payload.get("results") or [])
+            cursor = payload.get("next")
+            if not cursor or not payload.get("results"):
+                break
+        records = [r for r in records if parse_option_name(str(r.get("market", "")))]
+        contracts = self._option_contracts if self._option_contracts is not None else pd.DataFrame()
+        ids = dict(zip(contracts["venue_symbol"], contracts["contract_id"], strict=True)) if not contracts.empty else {}
+        return parse_option_trades(records, ids)
+
+    def option_mark_candles(self, symbol: str, resolution: str, start: datetime, end: datetime,
+                            *, price: str = "mark") -> pd.DataFrame:
+        """``mark`` or ``underlying`` candles of one live contract (served from listing to expiry)."""
+        if price not in ("mark", "underlying"):
+            raise ValueError(f"price must be 'mark' or 'underlying', got {price!r}")
+        return self._klines(symbol, resolution, start, end, price)
+
+    def settlement_prices(self, symbols: Iterable[str]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """(Settlement rows, contract settlements) of expired contracts, by name. Served for expiries from
+        2026-05-21 on; older ones answer ``MARKET_NOT_SETTLED``."""
+        payloads = []
+        for symbol in symbols:
+            try:
+                payloads.append(self.client.get("markets/settlement-price", {"market": symbol}))
+            except HttpError as exc:  # 404 MARKET_NOT_SETTLED / MARKET_NOT_FOUND: skipped by the parser
+                payloads.append({"symbol": symbol, "error": exc.body[:200]})
+        return parse_settlement_prices(payloads, _now())
+
+    def settlements(self, index: str, start: Optional[datetime] = None,
+                    end: Optional[datetime] = None) -> pd.DataFrame:
+        """Fixings of one index (``paradex:BTC`` or ``BTC``): the expiries in ``[start, end]`` are found
+        in the trade history (``SETTLE_MARKET`` trades name every settled contract) or, without
+        ``start``, in the ``SETTLED`` events of ``markets/history``; one ``settlement-price`` request per
+        expiry gives its exact instant and TWAP."""
+        base = _base(index)
+        end = _now() if end is None else pd.Timestamp(end)
+        if start is None:
+            events = self.client.get("markets/history", {"market": "ALL"}).get("results") or []
+            names = [e["symbol"] for e in events if e.get("event_type") == "SETTLED"
+                     and str(e.get("symbol", "")).startswith(f"{base}-")]
+        else:
+            names = self.option_trades(base, start, end)["venue_symbol"].tolist()
+        by_date: Dict[pd.Timestamp, str] = {}
+        for name in sorted(set(names)):
+            parsed = parse_option_name(name)
+            if parsed and parsed["base"] == base and parsed["expiry_date"] <= end:
+                by_date.setdefault(parsed["expiry_date"], name)
+        rows, _ = self.settlement_prices(by_date.values())
+        if rows.empty:
+            return rows
+        keep = rows["ts"] <= end if start is None else rows["ts"].between(pd.Timestamp(start), end)
+        return rows[keep].reset_index(drop=True)
+
+
 __all__ = [
     "FEE_MODEL",
     "FEE_MODEL_STATUS",
+    "ParadexOptions",
     "SETTLEMENT_METHOD",
     "YEAR_DAYS",
     "contract_id",
