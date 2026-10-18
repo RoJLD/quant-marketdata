@@ -6,6 +6,11 @@ re-downloading.
 
 Funding convention: ``rate`` is the signed fraction paid over the funding interval, **positive when longs
 pay shorts**; ``rate_1h`` divides it by the interval in hours and is the column to compare across venues.
+
+Trading session (``session`` instrument column), as the venue declares it: ``"24x7"`` (continuous),
+``"24x5"`` (round the clock on weekdays, closed at weekends), ``"no-overnight"`` (closed during the US
+overnight session), or ``None`` when the venue does not declare one. A restricted session is part of the
+instrument's identity (see the registry).
 """
 
 from __future__ import annotations
@@ -52,7 +57,10 @@ INSTRUMENT_COLUMNS = [
     "listed_at",
     "delisted_at",
     "status",
+    "session",
 ]
+
+SESSIONS = frozenset({"24x7", "24x5", "no-overnight"})
 
 FUNDING_COLUMNS = ["rate_raw", "direction_raw", "interval_h", "rate", "rate_1h", "apr"]
 
@@ -140,6 +148,7 @@ __all__ = [
     "FUNDING_COLUMNS",
     "HOURS_PER_YEAR",
     "INSTRUMENT_COLUMNS",
+    "SESSIONS",
     "UnsupportedDataset",
     "empty_frame",
     "finalize_funding",

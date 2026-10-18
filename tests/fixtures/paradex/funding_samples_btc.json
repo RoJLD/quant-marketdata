@@ -1,0 +1,132 @@
+[
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24554.027403789649",
+  "funding_premium": "6.84667325467962927",
+  "funding_rate": "0.00008391310939",
+  "funding_rate_8h": "0.00008391",
+  "funding_period_hours": 8,
+  "created_at": 1792022395343,
+  "impact_premium_rate": "-0.0004550733028564"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24554.88329126123302",
+  "funding_premium": "6.69493886764753786",
+  "funding_rate": "0.00008208060414",
+  "funding_rate_8h": "0.00008208",
+  "funding_period_hours": 8,
+  "created_at": 1792025995343,
+  "impact_premium_rate": "-0.0001731786794898"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24555.73263832330986",
+  "funding_premium": "6.77791462253478039",
+  "funding_rate": "0.00008311513149",
+  "funding_rate_8h": "0.00008311",
+  "funding_period_hours": 8,
+  "created_at": 1792029595343,
+  "impact_premium_rate": "-0.0004611289738496"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24556.48633757828345",
+  "funding_premium": "4.721402890439941163",
+  "funding_rate": "0.00005797764203",
+  "funding_rate_8h": "0.00005797",
+  "funding_period_hours": 8,
+  "created_at": 1792033195343,
+  "impact_premium_rate": "-0.0003807253047596"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24557.00333599408551",
+  "funding_premium": "4.690184029743861997",
+  "funding_rate": "0.00005801553807",
+  "funding_rate_8h": "0.00005801",
+  "funding_period_hours": 8,
+  "created_at": 1792036795343,
+  "impact_premium_rate": "-0.000410191598352"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24557.76321185046384",
+  "funding_premium": "7.62505908147955344",
+  "funding_rate": "0.00009354682386",
+  "funding_rate_8h": "0.00009354",
+  "funding_period_hours": 8,
+  "created_at": 1792040399981,
+  "impact_premium_rate": "-0.000463212865882"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24558.66460229945175",
+  "funding_premium": "6.83002028307082885",
+  "funding_rate": "0.0000848342347",
+  "funding_rate_8h": "0.00008483",
+  "funding_period_hours": 8,
+  "created_at": 1792043999981,
+  "impact_premium_rate": "-0.0004422467165679"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24559.55885992799825",
+  "funding_premium": "7.42648915960524883",
+  "funding_rate": "0.00009190688241",
+  "funding_rate_8h": "0.0000919",
+  "funding_period_hours": 8,
+  "created_at": 1792047599981,
+  "impact_premium_rate": "-0.0004240089514296"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24560.4845246008563",
+  "funding_premium": "6.44185050477436584",
+  "funding_rate": "0.00007909181405",
+  "funding_rate_8h": "0.00007909",
+  "funding_period_hours": 8,
+  "created_at": 1792051199981,
+  "impact_premium_rate": "-0.0004574367099827"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24561.20415233283105",
+  "funding_premium": "5.66547368393871813",
+  "funding_rate": "0.00006969778554",
+  "funding_rate_8h": "0.00006969",
+  "funding_period_hours": 8,
+  "created_at": 1792054799981,
+  "impact_premium_rate": "-0.0002768421311781"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24561.86525584814001",
+  "funding_premium": "5.49132721442201609",
+  "funding_rate": "0.00006764876683",
+  "funding_rate_8h": "0.00006764",
+  "funding_period_hours": 8,
+  "created_at": 1792058399981,
+  "impact_premium_rate": "-0.0004208326478527"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24562.57458574380756",
+  "funding_premium": "5.73795901148223289",
+  "funding_rate": "0.00007087580817",
+  "funding_rate_8h": "0.00007087",
+  "funding_period_hours": 8,
+  "created_at": 1792061999981,
+  "impact_premium_rate": "-0.0004498893983381"
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "24563.2758331523988",
+  "funding_premium": "5.616167616955659752",
+  "funding_rate": "0.0000694241075",
+  "funding_rate_8h": "0.00006942",
+  "funding_period_hours": 8,
+  "created_at": 1792065599981,
+  "impact_premium_rate": "-0.0003582126319216"
+ }
+]

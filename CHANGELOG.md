@@ -6,6 +6,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 The shared market- and funding-data layer of the platform; the cross-repo dependency map lives in the
 Quant-lab repo's `docs/PLATFORM.md`.
 
+## [Unreleased]
+
+### Added
+- **Paradex adapter** (`paradex`, perps only) over the public REST API (no SDK): instruments, funding,
+  last/mark candles (1m-1h), specs, order book. Paradex funding is continuous; each whole hour becomes a
+  settlement-equivalent event `rate = (index_h - index_{h-1}) / price` from the funding index (the
+  exact cash flow per unit of notional; positive = longs pay, as the index rises with a positive rate),
+  with `rate_raw` = the quoted `funding_rate_8h` and the index kept in `funding_index_raw`. History before
+  2024-03-12 08:00 UTC is not served: the venue's stored records swap index and premium before
+  06:09:13 that day and the old index does not match the quoted rate. One request per hour of history,
+  fetched by 16 threads under the client's rate limiter (~13-17 req/s with `--rate 20`).
+- `session` instrument column: the trading session the venue declares (`24x7`, `24x5`, `no-overnight`,
+  or none). Extended (`tradingHours`) and Lighter (`market_config.trading_hours`) declare it.
+- Registry: Paradex rule (`<BASE>-USD-PERP`, `k` = x1000) and overrides for its TradFi perps; explicit
+  "left unresolved" decisions with their reason (`registry_overrides.UNRESOLVED`); non-ASCII names are
+  reported as such.
+
+### Changed
+- Registry: a restricted session is part of the instrument id (`ADBE-USD-PERP-24X5`,
+  `ADSK-USD-PERP-NOOVERNIGHT`); continuous and undeclared sessions add nothing. On Extended this changes
+  the id of the 46 `NO_OVERNIGHT` stock perps (`ADSK-USD` was `ADSK-USD-PERP`) and resolves the 67
+  `<TICKER>_24_5-USD` markets: the name is a listing batch, the declared session decides (`MSFT_24_5-USD`
+  is continuous, hence `MSFT-USD-PERP`; `ADBE_24_5-USD` trades on weekdays, hence `ADBE-USD-PERP-24X5`).
+  An unknown declared session leaves the market unresolved.
+- Registry: Binance and Aster `BTCU` / `ETHU` (quote and margin asset `U`, a stablecoin) resolve to
+  `BTC-U-PERP` / `ETH-U-PERP`, like the other second stablecoin books.
+- Extended `underlying_ref` drops the `_24_5` listing suffix (`AAPL`, not `AAPL_24_5`).
+
 ## [0.3.0] — 2026-10-17
 
 The multi-venue data layer: one `Venue` protocol for Lighter, Hyperliquid, Binance USD-M, Extended and Aster,

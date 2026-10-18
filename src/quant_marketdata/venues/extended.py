@@ -9,6 +9,10 @@ API quirks this adapter absorbs (verified 2026-10-15):
   ``Commodity``, ``FX``, ``ETF/Index``, ``Pre-market``). ``ETF/Index`` mixes both classes and is left to
   the registry overrides.
 - ``collateralAssetName`` is ``USD`` for every market; it is kept as the settle asset as served.
+- ``tradingHours`` declares the session (``CONTINUOUS``, ``WEEKDAYS``, ``NO_OVERNIGHT``; checked
+  2026-10-18), which the registry keys restricted-session ids on. ``<TICKER>_24_5-USD`` names are a
+  listing batch, not a session: most active ones are ``CONTINUOUS``. Delisted markets are renamed in
+  ``uiName`` (``NA26-USD``) but keep their ``name``.
 - ``info/<MARKET>/funding?startTime&endTime`` (ms) is hourly, ``f`` a **signed fraction per hour**
   (positive = longs pay), returned **newest first** and capped at the **1000 most recent** events of the
   window: windows are kept to 500 hours. History starts at the market's ``createdAt`` (BTC-USD:
@@ -73,6 +77,17 @@ CATEGORY_CLASSES: Dict[str, Optional[str]] = {
     "Pre-market": "private",
 }
 STATUSES = {"ACTIVE": "active", "DELISTED": "inactive", "PRELISTED": "pending"}
+SESSIONS = {"CONTINUOUS": "24x7", "WEEKDAYS": "24x5", "NO_OVERNIGHT": "no-overnight"}
+LISTING_BATCH = "_24_5"
+
+
+def session(market: Dict[str, Any]) -> Optional[str]:
+    """Declared session; an unknown ``tradingHours`` value is passed on lower-cased (the registry then
+    reports the market as unresolved)."""
+    hours = market.get("tradingHours")
+    if not hours:
+        return None
+    return SESSIONS.get(hours, str(hours).lower())
 
 
 def _ms(value: datetime | pd.Timestamp) -> int:
@@ -110,19 +125,21 @@ class ExtendedVenue:
         for m in self._markets():
             created = int(m["createdAt"]) if m.get("createdAt") else None
             cls = asset_class(m)
+            asset = (m.get("assetName") or "").removesuffix(LISTING_BATCH) or None
             rows.append({
                 "venue": self.name,
                 "venue_symbol": m["name"],
                 "venue_market_id": m["name"],
                 "settle_asset": m.get("collateralAssetName"),
                 "asset_class": cls,
-                "underlying_ref": m.get("assetName") if cls not in (None, "crypto") else None,
+                "underlying_ref": asset if cls not in (None, "crypto") else None,
                 "chain": None,
                 "contract_address": None,
                 "funding_interval_h": float(FUNDING_INTERVAL_H),
                 "listed_at": pd.Timestamp(created, unit="ms") if created else pd.NaT,
                 "delisted_at": pd.NaT,
                 "status": STATUSES.get(m.get("status"), str(m.get("status", "")).lower()),
+                "session": session(m),
             })
         columns = [c for c in INSTRUMENT_COLUMNS if c != "instrument_id"]
         return pd.DataFrame(rows).reindex(columns=columns)
@@ -223,4 +240,4 @@ def parse_candles(records: List[Dict[str, Any]], price: str) -> pd.DataFrame:
 
 register_venue(ExtendedVenue.name, ExtendedVenue)
 
-__all__ = ["ExtendedVenue", "asset_class", "parse_candles", "parse_funding"]
+__all__ = ["ExtendedVenue", "asset_class", "parse_candles", "parse_funding", "session"]

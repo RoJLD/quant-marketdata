@@ -14,6 +14,8 @@ API quirks this adapter absorbs (verified 2026-10-15):
   ``funding_rate`` is signed and equals the REST rate with sign + for ``long``, - for ``short`` on 7/7
   markets checked (and every ``short`` market had a negative mark-index premium). The rate is
   rounded to 4 decimals of a percent, i.e. a 1e-6/h (~0.88 %/yr) grid.
+- ``market_config.trading_hours`` is empty (continuous) on every perp (checked 2026-10-18); any other
+  value is passed on as the session, which the registry reports as unresolved until it is mapped.
 - ``exchangeMetrics`` open interest is the notional of **both sides**; series are padded with zeros before
   listing, and an unknown symbol yields zeros rather than an error.
 """
@@ -57,6 +59,14 @@ RESOLUTION_SECONDS: Dict[str, int] = {
 
 def _seconds(value: datetime | pd.Timestamp) -> int:
     return int(pd.Timestamp(value).timestamp())
+
+
+def _session(market: Dict[str, Any]) -> Optional[str]:
+    config = market.get("market_config")
+    if not isinstance(config, dict) or "trading_hours" not in config:
+        return None
+    hours = config["trading_hours"]
+    return "24x7" if hours == "" else str(hours).lower()
 
 
 def _check(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -107,6 +117,7 @@ class LighterVenue:
                 "listed_at": pd.Timestamp(created, unit="ms") if created else pd.NaT,
                 "delisted_at": pd.NaT,
                 "status": m.get("status"),
+                "session": _session(m),
             })
         columns = [c for c in INSTRUMENT_COLUMNS if c != "instrument_id"]
         return pd.DataFrame(rows).reindex(columns=columns)

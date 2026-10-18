@@ -1,0 +1,38 @@
+[
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "40.35500346460118",
+  "funding_premium": "4428.048225865576",
+  "funding_rate": "0.00056037563269",
+  "funding_rate_8h": "0.00056037",
+  "funding_period_hours": 8,
+  "created_at": 1710223197200
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "4434.230746477185684",
+  "funding_premium": "53.3841320103081927",
+  "funding_rate": "0.00073855206899",
+  "funding_rate_8h": "0.00073855",
+  "funding_period_hours": 8,
+  "created_at": 1710226798150
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "4440.083013275927987",
+  "funding_premium": "43.7308647481035681",
+  "funding_rate": "0.00060600625064",
+  "funding_rate_8h": "0.000606",
+  "funding_period_hours": 8,
+  "created_at": 1710230398149
+ },
+ {
+  "market": "BTC-USD-PERP",
+  "funding_index": "4444.238645218214084",
+  "funding_premium": "31.6662475648887465",
+  "funding_rate": "0.0004414611088",
+  "funding_rate_8h": "0.00044146",
+  "funding_period_hours": 8,
+  "created_at": 1710233998149
+ }
+]

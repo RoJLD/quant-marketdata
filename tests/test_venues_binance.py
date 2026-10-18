@@ -163,7 +163,12 @@ def test_resolve_binance_snapshot():
     assert rows.loc["PAXGUSDT", "asset_class"] == "crypto"
     assert rows.loc["PAXGUSDT", "underlying_ref"] == "XAU"
     assert rows.loc["PAXGUSDT", "mapping_source"] == "override"
-    assert set(build.unresolved["venue_symbol"]) == {"ETHBTC", "BTCU", "币安人生USDT"}
+    assert rows.loc["BTCU", "instrument_id"] == "BTC-U-PERP"  # declared quote/margin asset U
+    assert rows.loc["BTCU", "mapping_source"] == "override" and rows.loc["BTCU", "asset_class"] == "crypto"
+    reasons = build.unresolved.set_index("venue_symbol")["reason"]
+    assert set(reasons.index) == {"ETHBTC", "币安人生USDT"}
+    assert reasons["币安人生USDT"].startswith("non-ASCII name")
+    assert reasons["ETHBTC"] == "no rule or override"
 
 
 # -- Aster -------------------------------------------------------------------------------------------
@@ -184,6 +189,8 @@ def test_aster_instruments_and_registry():
     assert rows.loc["BTCUSDT", "mapping_source"] == "rule-default-class"  # untagged
     assert rows.loc["BTCUSD1", "instrument_id"] == "BTC-USD1-PERP"
     assert rows.loc["BTCUSDT", "settle_asset"] == "USDT"
+    assert rows.loc["BTCU", "instrument_id"] == "BTC-U-PERP"
+    assert set(build.unresolved["venue_symbol"]) == {"币安人生USDT"}
 
 
 def test_aster_funding_8h_and_1h():

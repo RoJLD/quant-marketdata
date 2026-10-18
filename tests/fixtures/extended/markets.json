@@ -900,6 +900,411 @@
    "visibleOnUi": true,
    "referenceMarket": "us_index_fut",
    "createdAt": 1752829532673
+  },
+  {
+   "name": "ADBE_24_5-USD",
+   "type": "PERPETUAL",
+   "uiName": "ADBE-USD",
+   "category": "RWA",
+   "subCategory": "Equity",
+   "assetName": "ADBE_24_5",
+   "assetPrecision": 2,
+   "collateralAssetName": "USD",
+   "collateralAssetPrecision": 6,
+   "description": "Adobe Inc",
+   "active": true,
+   "isRfq": true,
+   "isOffHours": true,
+   "status": "ACTIVE",
+   "tradingHours": "WEEKDAYS",
+   "marketStats": {
+    "dailyVolume": "0.000000",
+    "dailyVolumeBase": "0.00",
+    "dailyPriceChange": "0",
+    "dailyPriceChangePercentage": "0",
+    "dailyLow": "0",
+    "dailyHigh": "0",
+    "lastPrice": "241.01",
+    "askPrice": "251.16",
+    "bidPrice": "236.43",
+    "markPrice": "243.793599999999",
+    "indexPrice": "243.793599999999",
+    "fundingRate": "0.000005",
+    "nextFundingRate": 1792317600000,
+    "openInterest": "4044.193600",
+    "openInterestBase": "16.58",
+    "deleverageLevels": {
+     "shortPositions": [
+      {
+       "level": 1,
+       "rankingLowerBound": "-7.8516"
+      },
+      {
+       "level": 2,
+       "rankingLowerBound": "-0.6172"
+      },
+      {
+       "level": 3,
+       "rankingLowerBound": "-0.2135"
+      }
+     ],
+     "longPositions": [
+      {
+       "level": 1,
+       "rankingLowerBound": "0.0000"
+      },
+      {
+       "level": 2,
+       "rankingLowerBound": "0.0007"
+      }
+     ]
+    }
+   },
+   "tradingConfig": {
+    "minOrderSize": "0.1",
+    "minOrderSizeChange": "0.01",
+    "minPriceChange": "0.01",
+    "maxMarketOrderValue": "50000",
+    "maxLimitOrderValue": "200000",
+    "maxPositionValue": "250000",
+    "maxLeverage": "10.00",
+    "hourlyFundingRateCap": "1",
+    "openInterestLimit": "500000",
+    "maxNumOrders": "200",
+    "limitPriceCap": "0.1",
+    "limitPriceFloor": "0.1",
+    "riskFactorConfig": [
+     {
+      "upperBound": "250000",
+      "riskFactor": "0.1",
+      "isAvailableForUsers": true
+     },
+     {
+      "upperBound": "500000",
+      "riskFactor": "0.2",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "750000",
+      "riskFactor": "0.3",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1000000",
+      "riskFactor": "0.4",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1250000",
+      "riskFactor": "0.5",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1500000",
+      "riskFactor": "0.6",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1750000",
+      "riskFactor": "0.7",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "2000000",
+      "riskFactor": "0.8",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "2250000",
+      "riskFactor": "0.9",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "2500000",
+      "riskFactor": "1",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1000000000",
+      "riskFactor": "1",
+      "isAvailableForUsers": false
+     }
+    ],
+    "uPnlWithdrawable": false,
+    "postWithdrawalMarginFactor": "0"
+   },
+   "l2Config": {
+    "type": "STARKX",
+    "collateralId": "0x1",
+    "syntheticId": "0x414442455f32345f352d3300000000",
+    "syntheticResolution": 1000,
+    "collateralResolution": 1000000
+   },
+   "visibleOnUi": true,
+   "referenceMarket": "us_equity",
+   "createdAt": 1788426407082
+  },
+  {
+   "name": "ADSK-USD",
+   "type": "PERPETUAL",
+   "uiName": "ADSK-USD",
+   "category": "RWA",
+   "subCategory": "Equity",
+   "assetName": "ADSK",
+   "assetPrecision": 2,
+   "collateralAssetName": "USD",
+   "collateralAssetPrecision": 6,
+   "description": "Autodesk",
+   "active": true,
+   "isRfq": true,
+   "isOffHours": true,
+   "status": "ACTIVE",
+   "tradingHours": "NO_OVERNIGHT",
+   "marketStats": {
+    "dailyVolume": "0.000000",
+    "dailyVolumeBase": "0.00",
+    "dailyPriceChange": "0",
+    "dailyPriceChangePercentage": "0",
+    "dailyLow": "0",
+    "dailyHigh": "0",
+    "lastPrice": "243.69",
+    "askPrice": "245.32",
+    "bidPrice": "230.93",
+    "markPrice": "238.125",
+    "indexPrice": "238.125",
+    "fundingRate": "0.000005",
+    "nextFundingRate": 1792317600000,
+    "openInterest": "976.312500",
+    "openInterestBase": "4.10",
+    "deleverageLevels": {
+     "shortPositions": [
+      {
+       "level": 1,
+       "rankingLowerBound": "0.0000"
+      }
+     ],
+     "longPositions": [
+      {
+       "level": 1,
+       "rankingLowerBound": "-6.0841"
+      }
+     ]
+    }
+   },
+   "tradingConfig": {
+    "minOrderSize": "0.1",
+    "minOrderSizeChange": "0.01",
+    "minPriceChange": "0.01",
+    "maxMarketOrderValue": "50000",
+    "maxLimitOrderValue": "200000",
+    "maxPositionValue": "250000",
+    "maxLeverage": "10.00",
+    "hourlyFundingRateCap": "1",
+    "openInterestLimit": "500000",
+    "maxNumOrders": "200",
+    "limitPriceCap": "0.1",
+    "limitPriceFloor": "0.1",
+    "riskFactorConfig": [
+     {
+      "upperBound": "250000",
+      "riskFactor": "0.1",
+      "isAvailableForUsers": true
+     },
+     {
+      "upperBound": "500000",
+      "riskFactor": "0.2",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "750000",
+      "riskFactor": "0.3",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1000000",
+      "riskFactor": "0.4",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1250000",
+      "riskFactor": "0.5",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1500000",
+      "riskFactor": "0.6",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1750000",
+      "riskFactor": "0.7",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "2000000",
+      "riskFactor": "0.8",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "2250000",
+      "riskFactor": "0.9",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "2500000",
+      "riskFactor": "1",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1000000000",
+      "riskFactor": "1",
+      "isAvailableForUsers": false
+     }
+    ],
+    "uPnlWithdrawable": false,
+    "postWithdrawalMarginFactor": "0"
+   },
+   "l2Config": {
+    "type": "STARKX",
+    "collateralId": "0x1",
+    "syntheticId": "0x4144534b2d33000000000000000000",
+    "syntheticResolution": 1000,
+    "collateralResolution": 1000000
+   },
+   "visibleOnUi": true,
+   "referenceMarket": "us_equity",
+   "createdAt": 1785349134165
+  },
+  {
+   "name": "ADSK_24_5-USD",
+   "type": "PERPETUAL",
+   "uiName": "NA26-USD",
+   "category": "RWA",
+   "subCategory": "Equity",
+   "assetName": "ADSK_24_5",
+   "assetPrecision": 2,
+   "collateralAssetName": "USD",
+   "collateralAssetPrecision": 6,
+   "description": "Autodesk",
+   "active": true,
+   "isRfq": true,
+   "isOffHours": false,
+   "status": "DELISTED",
+   "tradingHours": "WEEKDAYS",
+   "marketStats": {
+    "dailyVolume": "0",
+    "dailyVolumeBase": "0",
+    "dailyPriceChange": "0",
+    "dailyPriceChangePercentage": "0",
+    "dailyLow": "0",
+    "dailyHigh": "0",
+    "lastPrice": "202.74",
+    "askPrice": "248.68",
+    "bidPrice": "248.68",
+    "markPrice": "248.68",
+    "indexPrice": "248.68",
+    "fundingRate": "0.000005",
+    "nextFundingRate": 1792317600000,
+    "openInterest": "0",
+    "openInterestBase": "0",
+    "deleverageLevels": {
+     "shortPositions": [
+      {
+       "level": 1,
+       "rankingLowerBound": "0.0000"
+      }
+     ],
+     "longPositions": [
+      {
+       "level": 1,
+       "rankingLowerBound": "-2.3594"
+      }
+     ]
+    }
+   },
+   "tradingConfig": {
+    "minOrderSize": "1",
+    "minOrderSizeChange": "0.01",
+    "minPriceChange": "0.01",
+    "maxMarketOrderValue": "50000",
+    "maxLimitOrderValue": "200000",
+    "maxPositionValue": "250000",
+    "maxLeverage": "10.00",
+    "hourlyFundingRateCap": "1",
+    "openInterestLimit": "500000",
+    "maxNumOrders": "200",
+    "limitPriceCap": "0.1",
+    "limitPriceFloor": "0.1",
+    "riskFactorConfig": [
+     {
+      "upperBound": "250000",
+      "riskFactor": "0.1",
+      "isAvailableForUsers": true
+     },
+     {
+      "upperBound": "500000",
+      "riskFactor": "0.2",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "750000",
+      "riskFactor": "0.3",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1000000",
+      "riskFactor": "0.4",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1250000",
+      "riskFactor": "0.5",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1500000",
+      "riskFactor": "0.6",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1750000",
+      "riskFactor": "0.7",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "2000000",
+      "riskFactor": "0.8",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "2250000",
+      "riskFactor": "0.9",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "2500000",
+      "riskFactor": "1",
+      "isAvailableForUsers": false
+     },
+     {
+      "upperBound": "1000000000",
+      "riskFactor": "1",
+      "isAvailableForUsers": false
+     }
+    ],
+    "uPnlWithdrawable": false,
+    "postWithdrawalMarginFactor": "0"
+   },
+   "l2Config": {
+    "type": "STARKX",
+    "collateralId": "0x1",
+    "syntheticId": "0x4144534b5f32345f352d3300000000",
+    "syntheticResolution": 1000,
+    "collateralResolution": 1000000
+   },
+   "visibleOnUi": false,
+   "referenceMarket": "us_equity",
+   "createdAt": 1784709332852
   }
  ]
 }
