@@ -112,9 +112,14 @@ PARADEX: Dict[str, Override] = {
                 ref=True, suffix="-USD-PERP"),
 }
 
+DERIVE: Dict[str, Override] = {
+    "XAUT-PERP": {**_GOLD_TOKEN, "why": "Tether gold token: crypto venue risk, gold exposure"},
+}
+
 OVERRIDES: Dict[str, Dict[str, Override]] = {
     "aster": ASTER,
     "binance": BINANCE,
+    "derive": DERIVE,
     "extended": EXTENDED,
     "hyperliquid": HYPERLIQUID,
     "lighter": LIGHTER,

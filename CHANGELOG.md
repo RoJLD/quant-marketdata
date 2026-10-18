@@ -33,6 +33,12 @@ Quant-lab repo's `docs/PLATFORM.md`.
   settlement indexes (`cfb:BRTI`, `deribit:btc_usd`, `paradex:<BASE>`...) with per-market fixing methods, and fee models
   (`documented` / `unconfirmed`); a store partitioned by day or month with append-only snapshot parts
   compacted daily (`ContractStore`).
+- **Derive adapter** (`derive`) over the public API v3 (no SDK): perps on the `Venue` protocol
+  (instruments, hourly funding as a signed fraction per hour, specs; the venue keeps ~12 days of funding
+  history) and options on `OptionsVenue` (contracts from `get_all_instruments` structured fields, chains
+  from `get_tickers` per expiry with the abbreviated keys mapped by an explicit table, greeks =
+  undiscounted Black-76 on the forward, public trades without trader identifiers, settlement prices of the
+  last 12 expiries). Registry rule `<BASE>-PERP` and the XAUT gold-token override.
 - `Dataset` members for dated contracts (`OPTION_CONTRACTS`, `OPTION_CHAIN`, ..., `SETTLEMENTS`) and
   `PERP_DATASETS` / `CONTRACT_DATASETS`; Lighter now declares `PERP_DATASETS` instead of every dataset.
 
