@@ -31,7 +31,21 @@ class Dataset(str, Enum):
     DAILY_METRICS = "daily_metrics"
     SPECS = "specs"
     BOOK = "book"  # live order book snapshot (not stored: the stream recorder keeps the history)
+    # Dated contracts (options and binaries): ``quant_marketdata.venues.contracts``.
+    OPTION_CONTRACTS = "option_contracts"
+    OPTION_CHAIN = "option_chain"
+    OPTION_TRADES = "option_trades"
+    OPTION_MARK_CANDLES = "option_mark_candles"
+    BINARY_CONTRACTS = "binary_contracts"
+    BINARY_QUOTES = "binary_quotes"
+    BINARY_CANDLES = "binary_candles"
+    BINARY_TRADES = "binary_trades"
+    SETTLEMENTS = "settlements"
 
+
+PERP_DATASETS = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
+                           Dataset.DAILY_METRICS, Dataset.SPECS, Dataset.BOOK})
+CONTRACT_DATASETS = frozenset(Dataset) - PERP_DATASETS
 
 ASSET_CLASSES = frozenset({"crypto", "equity", "etf", "index", "rates", "commodity", "fx", "private"})
 
@@ -143,11 +157,13 @@ def funding_grid(events: pd.DataFrame, mode: str) -> pd.Series:
 
 __all__ = [
     "CANDLE_COLUMNS",
+    "CONTRACT_DATASETS",
     "DAILY_METRICS_COLUMNS",
     "Dataset",
     "FUNDING_COLUMNS",
     "HOURS_PER_YEAR",
     "INSTRUMENT_COLUMNS",
+    "PERP_DATASETS",
     "SESSIONS",
     "UnsupportedDataset",
     "empty_frame",

@@ -22,6 +22,19 @@ Quant-lab repo's `docs/PLATFORM.md`.
 - Registry: Paradex rule (`<BASE>-USD-PERP`, `k` = x1000) and overrides for its TradFi perps; explicit
   "left unresolved" decisions with their reason (`registry_overrides.UNRESOLVED`); non-ASCII names are
   reported as such.
+- **Dated contracts** (`quant_marketdata.venues.contracts`, spec Quant-lab
+  `2026-10-18-options-prediction-markets-design.md`): canonical schemas of option and binary contracts,
+  chain and quote snapshots, trades, candles and settlements, with canonical ids
+  (`BTC-USD-20261023T0800-82000-C`, `BTC-USD-20261018T1000-GE81500`; the settlement index is a column,
+  never part of an id); the `OptionsVenue` and `BinaryVenue` protocols; a point-in-time contract
+  registry separate from the perp registry (underlying from structured fields, the name only
+  cross-checked, `delisted` before expiry and `expired` after, settlements kept with
+  `settlement_seen_at`, `universe_change` events); explicit tables for underlying overrides, Kalshi series,
+  settlement indexes (`cfb:BRTI`, `deribit:btc_usd`...) with per-market fixing methods, and fee models
+  (`documented` / `unconfirmed`); a store partitioned by day or month with append-only snapshot parts
+  compacted daily (`ContractStore`).
+- `Dataset` members for dated contracts (`OPTION_CONTRACTS`, `OPTION_CHAIN`, ..., `SETTLEMENTS`) and
+  `PERP_DATASETS` / `CONTRACT_DATASETS`; Lighter now declares `PERP_DATASETS` instead of every dataset.
 
 ### Changed
 - Registry: a restricted session is part of the instrument id (`ADBE-USD-PERP-24X5`,

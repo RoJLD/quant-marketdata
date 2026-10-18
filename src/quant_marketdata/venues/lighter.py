@@ -35,6 +35,7 @@ from quant_marketdata.venues.schema import (
     CANDLE_COLUMNS,
     DAILY_METRICS_COLUMNS,
     INSTRUMENT_COLUMNS,
+    PERP_DATASETS,
     Dataset,
     empty_frame,
     finalize_funding,
@@ -78,7 +79,7 @@ def _check(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 class LighterVenue:
     name = "lighter"
-    capabilities = frozenset(Dataset)
+    capabilities = PERP_DATASETS
     resolutions = tuple(RESOLUTION_SECONDS)
 
     def __init__(self, client: Optional[JsonClient] = None, *, rate: float = 2.0) -> None:
