@@ -1,0 +1,32 @@
+[
+ {
+  "symbol": "BTC-USD-18OCT26-81000-C",
+  "settlement_price": "587.70086941296",
+  "underlying_twap_price": "81587.70086941296",
+  "expiry_at": 1792310400000
+ },
+ {
+  "symbol": "BTC-USD-18OCT26-82000-P",
+  "settlement_price": "412.29913058704",
+  "underlying_twap_price": "81587.70086941296",
+  "expiry_at": 1792310400000
+ },
+ {
+  "symbol": "ETH-USD-18OCT26-2400-C",
+  "settlement_price": "6.5910561466653",
+  "underlying_twap_price": "2406.5910561466653",
+  "expiry_at": 1792310400000
+ },
+ {
+  "symbol": "XAU-USD-16OCT26-4200-C",
+  "settlement_price": "0",
+  "underlying_twap_price": "4159.619543018179",
+  "expiry_at": 1792171800000
+ },
+ {
+  "symbol": "META-USD-16OCT26-700-C",
+  "settlement_price": "5.0934839255904",
+  "underlying_twap_price": "705.0934839255904",
+  "expiry_at": 1792180800000
+ }
+]
