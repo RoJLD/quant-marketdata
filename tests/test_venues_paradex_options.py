@@ -437,3 +437,21 @@ def test_mark_candles_per_contract_and_one_underlying_series(tmp_path, frozen):
     download_mark_candles(ParadexVenue(FakeParadexOptions()), store, "BTC")
     again = store.read_monthly("paradex", Dataset.OPTION_MARK_CANDLES, "BTC-USD", resolution="1h")
     assert len(again) == len(candles)  # merged on (venue_symbol, price_type, ts)
+
+
+@pytest.mark.live
+def test_live_paradex_options_pass(tmp_path):
+    store = ContractStore.at(tmp_path)
+    venue = ParadexVenue(rate=20)
+    report = snapshot_pass(venue, store, underlyings=("BTC",))
+    assert report["ok"] and report["contracts"] > 1000 and report["unresolved"] == 0
+    chain = store.read_snapshots("paradex", Dataset.OPTION_CHAIN, "BTC-USD")
+    assert len(chain) > 100 and chain["contract_id"].notna().all() and chain["greeks_source"].eq("venue").all()
+    assert chain["iv_mark"].between(0.01, 5).all() and chain["underlying_price"].nunique() == 1
+    fixings = venue.settlements("BTC")
+    assert not fixings.empty and fixings["method"].eq("twap_30min").all()
+    assert fixings["settlement_price"].between(1_000, 1_000_000).all()
+    live = venue.resolved_contracts("BTC").sort_values("expiry").iloc[-1]
+    end = pd.Timestamp.now(tz="UTC").tz_localize(None).floor("h")
+    candles = venue.option_mark_candles(live["venue_symbol"], "1h", end - pd.Timedelta(hours=6), end)
+    assert 5 <= len(candles) <= 7 and candles["contract_id"].eq(live["contract_id"]).all()

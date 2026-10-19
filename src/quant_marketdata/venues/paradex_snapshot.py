@@ -5,13 +5,15 @@ lives, and an expired contract's fixing can only be asked for by name. Three pas
 - ``snapshot_pass`` (every 15 minutes, plus 07:58 UTC): the full listing into the contract registry
   (``registry/options/paradex.parquet``, point-in-time, nothing removed; ``universe_change`` events), then one
   chain snapshot per underlying (append-only parts under ``venues/paradex/option_chain/<UNDERLYING>/``), then
-  the heartbeat. Measured 2026-10-19: ~16 MB listing + ~7 MB summary, BTC + ETH ~2,150 rows a pass.
+  the heartbeat. Measured 2026-10-19: ~16 MB listing + ~7 MB summary, ~9 s and ~2,150 BTC + ETH rows a
+  pass. A pass at 08:00:01 UTC still saw the contracts expiring at 08:00 (322, all then settled).
 - ``settle_expired`` (daily): the fixing of every expired registry contract still without one, one
   ``markets/settlement-price`` request per (base, expiry), into ``venues/paradex/settlements/<index>.parquet``
   and the registry (``settlement_price`` = the TWAP, ``settlement_source``, ``settlement_seen_at``).
 - ``download_mark_candles`` (daily, before expiries): mark candles of every live contract of an underlying and
   the underlying (spot oracle) candles once per base, into monthly partitions, re-reading ``lookback`` so a
-  short gap is closed.
+  short gap is closed. A first run starts at each contract's listing (ETH 2026-10-19: 958 contracts, 807k
+  hourly rows, 193 s); then about one request per contract and day.
 
 Each step of a pass is independent: a failure is reported in the returned summary (and the heartbeat), the
 other steps still run.
