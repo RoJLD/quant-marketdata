@@ -195,7 +195,7 @@ def test_settlements_are_the_spot_twap_and_payoffs_follow():
     contracts = contract_settlements(_fixture("option_settlements"), seen)
     for c in contracts.itertuples():
         name = parse_option_name(c.venue_symbol)
-        assert c.raw_settlement_price == pytest.approx(payoff(name["option_type"], name["strike"], c.settlement_price))
+        assert c.settlement_payoff_raw == pytest.approx(payoff(name["option_type"], name["strike"], c.settlement_price))
     rows = settlement_rows(contracts)
     assert list(rows.columns) == SETTLEMENT_COLUMNS and len(rows) == 4  # two BTC contracts, one fixing
     indexed = rows.set_index(["settlement_index_id", "ts"])
@@ -203,6 +203,7 @@ def test_settlements_are_the_spot_twap_and_payoffs_follow():
     assert btc["settlement_price"] == pytest.approx(81587.70086941296) and btc["venue_ref"] == "BTC-18OCT26"
     assert ("paradex:XAU", pd.Timestamp("2026-10-16 17:30")) in indexed.index
     assert rows["first_seen_at"].eq(seen).all() and rows["source_endpoint"].eq("markets/settlement-price").all()
+    assert rows["method"].eq("twap_30min").all() and rows["method_source"].eq("venue_doc").all()  # the table's
     assert contract_settlements([{"error": "MARKET_NOT_FOUND", "message": "Market not found"}], seen).empty
 
 
@@ -211,7 +212,7 @@ def test_market_history_settled_events():
     assert len(events) == 3 and events["settlement_source"].eq("markets/history").all()
     for e in events.itertuples():
         name = parse_option_name(e.venue_symbol)
-        assert e.raw_settlement_price == pytest.approx(payoff(name["option_type"], name["strike"], e.settlement_price))
+        assert e.settlement_payoff_raw == pytest.approx(payoff(name["option_type"], name["strike"], e.settlement_price))
     assert events["settled_at"].dt.floor("h").eq(pd.Timestamp("2026-10-18 08:00")).all()
     assert events["expiry"].isna().all()  # joined from the registry by the caller
 

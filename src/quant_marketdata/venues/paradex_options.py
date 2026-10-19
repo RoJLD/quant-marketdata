@@ -14,9 +14,9 @@ Conventions (docs ``trading/dated-options/*`` and probes of 2026-10-18; every re
   20:00/21:00, some US500/US100 at 13:30/14:30). ``parse_option_name`` is registered for the registry's
   name/fields cross-check only.
 - **Underlyings.** BTC, ETH, SOL, HYPE, NEAR and ZEC resolve by the registry's crypto rule; the TradFi
-  bases are declared in ``OPTION_UNDERLYINGS['paradex']`` below (registered at import), consistent with the
-  perp overrides of the same bases. The settlement index of a contract is its base's **Paradex Spot Oracle
-  Price** (``settlement_index_raw`` = the base, id ``paradex:<BASE>``), the index of the perp of that base.
+  bases (XAU, CL, SPCX, META, MU, MSTR, US500, US100) by ``contracts.overrides.OPTION_UNDERLYINGS``. The
+  settlement index of a contract is its base's **Paradex Spot Oracle Price** (``settlement_index_raw`` = the
+  base, id ``paradex:<BASE>`` in ``SETTLEMENT_INDEXES``), the index of the perp of that base.
 - **Settlement.** Payoff on the **30-minute TWAP of the spot oracle** ending at expiry (docs
   ``dated-options/overview``). ``markets/settlement-price?market=<symbol>`` serves it after expiry, by name:
   ``settlement_price`` is the option's **payoff**, ``underlying_twap_price`` the TWAP; expiries before
@@ -26,7 +26,7 @@ Conventions (docs ``trading/dated-options/*`` and probes of 2026-10-18; every re
   trade at the payoff; an expiry with no open position leaves no trade (BTC 2026-10-04), so its fixing is
   only reachable through a contract the registry saw. The canonical ``settlement_price`` (contract and
   ``Settlement`` row) is the TWAP, the index value at the fixing; the payoff is kept as
-  ``raw_settlement_price`` and equals ``max(0, +-(TWAP - strike))``.
+  ``settlement_payoff_raw`` and equals ``max(0, +-(TWAP - strike))``.
 - **Chain** (``markets/summary?market=ALL``, one ~7 MB call): ``bid``/``ask``/``mark_price``/
   ``last_traded_price`` in USD (``""`` when absent), sizes and ``open_interest`` in units of the
   underlying, IVs as annualized fractions (``bid_iv``/``ask_iv`` absent on a one-sided book), ``greeks``
@@ -67,7 +67,6 @@ import pandas as pd
 from quant_marketdata.venues.base import require
 from quant_marketdata.venues.contracts.fees import FEE_MODELS
 from quant_marketdata.venues.contracts.indexes import settlement_index_info, venue_index_id
-from quant_marketdata.venues.contracts.overrides import OPTION_UNDERLYINGS
 from quant_marketdata.venues.contracts.registry import (
     register_name_parser,
     resolve_option_contracts,
@@ -106,21 +105,6 @@ _NAME = re.compile(r"^(?P<base>[A-Za-z0-9]+)-(?P<quote>[A-Z]+)-(?P<day>\d{1,2})(
                    r"-(?P<strike>\d+(?:_\d+)?)-(?P<type>[CP])$")
 
 
-def _ref(base: str, asset_class: str, why: str) -> Dict[str, object]:
-    return {"asset_class": asset_class, "underlying_ref": base, "why": why}
-
-
-# TradFi bases of the Paradex options (docs trading/instruments-guide/options/*), as for their perps.
-PARADEX_UNDERLYINGS: Dict[str, Dict[str, object]] = {
-    "XAU": _ref("XAU", "commodity", "Paradex XAU spot oracle (gold)"),
-    "CL": _ref("CL", "commodity", "Paradex CL spot oracle: the active front WTI future"),
-    **{base: _ref(base, "equity", f"Paradex {base} spot oracle: US-listed stock")
-       for base in ("META", "MU", "MSTR", "SPCX")},
-    **{base: _ref(base, "index", f"Paradex {base} spot oracle: equity index")
-       for base in ("US500", "US100")},
-}
-
-
 def parse_option_name(symbol: str) -> Optional[Dict[str, Any]]:
     """``META-USD-6NOV26-712_5-P`` -> base, quote, expiry date (no hour in the name), strike, type."""
     match = _NAME.match(symbol)
@@ -136,7 +120,6 @@ def parse_option_name(symbol: str) -> Optional[Dict[str, Any]]:
 
 # Registered into the shared tables, which stay the single place a decision is read from.
 register_name_parser(VENUE, parse_option_name)
-OPTION_UNDERLYINGS.setdefault(VENUE, PARADEX_UNDERLYINGS)
 FEE_MODELS.setdefault(VENUE, FEE_MODEL)
 
 
@@ -275,7 +258,7 @@ def _venue_ref(name: Mapping[str, Any]) -> str:
 def contract_settlements(payloads: Iterable[Mapping[str, Any]], seen_at: pd.Timestamp) -> pd.DataFrame:
     """``markets/settlement-price`` responses -> per-contract settlement fields (``venue_symbol``,
     ``expiry``, ``settlement_index_id``, ``settlement_price`` = TWAP, ``settlement_source``,
-    ``settlement_seen_at``, ``raw_settlement_price`` = payoff). Error payloads are skipped."""
+    ``settlement_seen_at``, ``settlement_payoff_raw`` = payoff). Error payloads are skipped."""
     rows = []
     for p in payloads:
         name = parse_option_name(str(p.get("symbol", "")))
@@ -290,7 +273,7 @@ def contract_settlements(payloads: Iterable[Mapping[str, Any]], seen_at: pd.Time
             "settlement_source": "markets/settlement-price",
             "settlement_seen_at": pd.Timestamp(seen_at),
             "venue_ref": _venue_ref(name),
-            "raw_settlement_price": to_float(p.get("settlement_price")),
+            "settlement_payoff_raw": to_float(p.get("settlement_price")),
         })
     return pd.DataFrame(rows)
 
@@ -342,7 +325,7 @@ def parse_market_history(events: Iterable[Mapping[str, Any]], seen_at: pd.Timest
             "settlement_source": "markets/history",
             "settlement_seen_at": pd.Timestamp(seen_at),
             "venue_ref": _venue_ref(name),
-            "raw_settlement_price": to_float(fields.get("settlement_price")),
+            "settlement_payoff_raw": to_float(fields.get("settlement_price")),
         })
     return pd.DataFrame(rows)
 
@@ -510,7 +493,6 @@ class ParadexOptions:
 __all__ = [
     "FEE_MODEL",
     "OPTION_DATASETS",
-    "PARADEX_UNDERLYINGS",
     "ParadexOptions",
     "YEAR_DAYS",
     "contract_settlements",
