@@ -1,0 +1,22 @@
+{
+ "event": {
+  "category": "Crypto",
+  "collateral_return_type": "",
+  "event_ticker": "KXBTCD-25JAN0117",
+  "exchange_index": 0,
+  "last_updated_ts": "0001-01-01T00:00:00Z",
+  "mutually_exclusive": false,
+  "series_ticker": "KXBTCD",
+  "settlement_sources": [
+   {
+    "name": "CF Benchmarks",
+    "url": "https://www.cfbenchmarks.com/data/indices/BRTI?ref=blog.cfbenchmarks.com"
+   }
+  ],
+  "strike_date": "2025-01-01T22:00:00Z",
+  "strike_period": "",
+  "sub_title": "On Jan 1, 2025 at 5pm EST",
+  "title": "Bitcoin price on Jan 1, 2025 at 5pm EST?"
+ },
+ "markets": []
+}
