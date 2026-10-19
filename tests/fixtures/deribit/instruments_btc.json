@@ -1,0 +1,120 @@
+{
+ "jsonrpc": "2.0",
+ "result": [
+  {
+   "state": "open",
+   "price_index": "btc_usd",
+   "kind": "option",
+   "instrument_name": "BTC-23OCT26-82000-C",
+   "maker_commission": 0.0003,
+   "taker_commission": 0.0003,
+   "product_group": "BTC",
+   "underlying_type": "crypto",
+   "instrument_type": "reversed",
+   "instrument_id": 706004,
+   "expiration_timestamp": 1792742400000,
+   "creation_timestamp": 1790841608000,
+   "is_active": true,
+   "contract_size": 1.0,
+   "tick_size": 0.0001,
+   "strike": 82000.0,
+   "counter_currency": "USD",
+   "option_type": "call",
+   "min_trade_amount": 0.1,
+   "block_trade_commission": 0.0003,
+   "block_trade_min_trade_amount": 25,
+   "block_trade_tick_size": 0.0001,
+   "settlement_currency": "BTC",
+   "settlement_period": "week",
+   "base_currency": "BTC",
+   "index_id": 1000033,
+   "quote_currency": "BTC",
+   "tick_size_steps": [
+    {
+     "tick_size": 0.0005,
+     "above_price": 0.005
+    }
+   ],
+   "lot_size": 1,
+   "base_currency_uuid": "5b71fc48-3dd3-540c-809b-f8c94d0e68b5",
+   "quote_currency_uuid": "5b71fc48-3dd3-540c-809b-f8c94d0e68b5"
+  },
+  {
+   "state": "open",
+   "price_index": "btc_usd",
+   "kind": "option",
+   "instrument_name": "BTC-23OCT26-79000-P",
+   "maker_commission": 0.0003,
+   "taker_commission": 0.0003,
+   "product_group": "BTC",
+   "underlying_type": "crypto",
+   "instrument_type": "reversed",
+   "instrument_id": 705999,
+   "expiration_timestamp": 1792742400000,
+   "creation_timestamp": 1790841608000,
+   "is_active": true,
+   "contract_size": 1.0,
+   "tick_size": 0.0001,
+   "strike": 79000.0,
+   "counter_currency": "USD",
+   "option_type": "put",
+   "min_trade_amount": 0.1,
+   "block_trade_commission": 0.0003,
+   "block_trade_min_trade_amount": 25,
+   "block_trade_tick_size": 0.0001,
+   "settlement_currency": "BTC",
+   "settlement_period": "week",
+   "base_currency": "BTC",
+   "index_id": 1000033,
+   "quote_currency": "BTC",
+   "tick_size_steps": [
+    {
+     "tick_size": 0.0005,
+     "above_price": 0.005
+    }
+   ],
+   "lot_size": 1,
+   "base_currency_uuid": "5b71fc48-3dd3-540c-809b-f8c94d0e68b5",
+   "quote_currency_uuid": "5b71fc48-3dd3-540c-809b-f8c94d0e68b5"
+  },
+  {
+   "state": "open",
+   "price_index": "btc_usd",
+   "kind": "option",
+   "instrument_name": "BTC-19OCT26-86000-C",
+   "maker_commission": 0.0003,
+   "taker_commission": 0.0003,
+   "product_group": "BTC",
+   "underlying_type": "crypto",
+   "instrument_type": "reversed",
+   "instrument_id": 715085,
+   "expiration_timestamp": 1792396800000,
+   "creation_timestamp": 1792051211000,
+   "is_active": true,
+   "contract_size": 1.0,
+   "tick_size": 0.0001,
+   "strike": 86000.0,
+   "counter_currency": "USD",
+   "option_type": "call",
+   "min_trade_amount": 0.1,
+   "block_trade_commission": 0.0003,
+   "block_trade_min_trade_amount": 25,
+   "block_trade_tick_size": 0.0001,
+   "settlement_currency": "BTC",
+   "settlement_period": "day",
+   "base_currency": "BTC",
+   "index_id": 1000033,
+   "quote_currency": "BTC",
+   "tick_size_steps": [
+    {
+     "tick_size": 0.0005,
+     "above_price": 0.005
+    }
+   ],
+   "lot_size": 1,
+   "base_currency_uuid": "5b71fc48-3dd3-540c-809b-f8c94d0e68b5",
+   "quote_currency_uuid": "5b71fc48-3dd3-540c-809b-f8c94d0e68b5"
+  }
+ ],
+ "testnet": false
+}

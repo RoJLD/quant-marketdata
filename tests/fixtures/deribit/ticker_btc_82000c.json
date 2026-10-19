@@ -1,0 +1,44 @@
+{
+ "jsonrpc": "2.0",
+ "result": {
+  "timestamp": 1792351380518,
+  "state": "open",
+  "stats": {
+   "high": 0.0155,
+   "low": 0.01,
+   "price_change": -27.5862,
+   "volume": 38.8,
+   "volume_usd": 37643.17
+  },
+  "greeks": {
+   "delta": 0.39209,
+   "gamma": 0.00012,
+   "vega": 34.69163,
+   "theta": -132.63963,
+   "rho": 3.83673
+  },
+  "index_price": 81012.12,
+  "instrument_name": "BTC-23OCT26-82000-C",
+  "last_price": 0.0105,
+  "settlement_price": 0.01242009,
+  "min_price": 0.0001,
+  "max_price": 0.0385,
+  "open_interest": 614.3,
+  "mark_price": 0.0104,
+  "interest_rate": 0.0,
+  "estimated_delivery_price": 81012.12,
+  "best_ask_price": 0.011,
+  "best_bid_price": 0.01,
+  "mark_iv": 34.61,
+  "bid_iv": 33.58,
+  "ask_iv": 35.92,
+  "underlying_price": 81078.87,
+  "underlying_index": "BTC-23OCT26",
+  "best_ask_amount": 88.6,
+  "best_bid_amount": 18.5
+ },
+ "usIn": 1792351381078813,
+ "usOut": 1792351381079040,
+ "usDiff": 227,
+ "testnet": false
+}

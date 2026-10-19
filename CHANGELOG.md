@@ -39,6 +39,12 @@ Quant-lab repo's `docs/PLATFORM.md`.
   from `get_tickers` per expiry with the abbreviated keys mapped by an explicit table, greeks =
   undiscounted Black-76 on the forward, public trades without trader identifiers, settlement prices of the
   last 12 expiries). Registry rule `<BASE>-PERP` and the XAUT gold-token override.
+- **Deribit option chains** (`deribit`, `OptionsVenue` only) over the direct public API, not OpenBB:
+  inverse BTC/ETH contracts (linear USDC options opt-in), chains from one book summary per currency with
+  inverse prices converted to USD by the pass's index price and IV from percent to fraction (raw values
+  kept), delivery prices since 2016 (`deribit:btc_usd`, 30-min TWAP per the venue docs), archive trades
+  from `history.deribit.com` with IV at the trade.
+- `download_venue` only lists perp instruments for a venue that declares `Dataset.INSTRUMENTS`.
 - `Dataset` members for dated contracts (`OPTION_CONTRACTS`, `OPTION_CHAIN`, ..., `SETTLEMENTS`) and
   `PERP_DATASETS` / `CONTRACT_DATASETS`; Lighter now declares `PERP_DATASETS` instead of every dataset.
 
