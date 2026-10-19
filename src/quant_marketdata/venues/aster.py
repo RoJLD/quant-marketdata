@@ -10,6 +10,7 @@ Differences from Binance (verified 2026-10-15):
   yet trading have an empty ``contractType`` and are dropped.
 - Books are USDT (primary) and USD1 (``BTCUSD1``, mostly the RWA perps).
 - Funding history goes back to 2021 for BTCUSDT (the venue's ApolloX lineage).
+- ``openInterest`` and ``premiumIndex`` are served as on Binance (live open interest, one side).
 """
 
 from __future__ import annotations

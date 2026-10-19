@@ -17,6 +17,8 @@ API quirks this adapter absorbs (verified 2026-10-15):
   the client is paced at 1.5 req/s at most. Settlement times carry a few ms of jitter (``...600002``).
 - ``klines`` / ``markPriceKlines`` return the oldest ``limit`` (max 1500) candles from ``startTime``;
   mark candles carry no volume.
+- ``openInterest`` serves ONE symbol per request (base units, one side); ``premiumIndex`` gives every
+  symbol's mark price in one request: a full-market snapshot is one request per symbol.
 
 Aster (``aster.py``) serves the same API shape and reuses this adapter.
 """
@@ -25,7 +27,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import pandas as pd
 
@@ -39,6 +41,7 @@ from quant_marketdata.venues.schema import (
     empty_frame,
     finalize_funding,
     make_book,
+    make_open_interest,
 )
 
 BASE_URL = "https://fapi.binance.com/fapi/v1"
@@ -88,7 +91,7 @@ DEPTH_LIMITS = (5, 10, 20, 50, 100, 500, 1000)
 class BinanceVenue:
     name = "binance"
     capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
-                              Dataset.SPECS, Dataset.BOOK})
+                              Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST})
     resolutions = tuple(RESOLUTION_SECONDS)
     base_url = BASE_URL
     max_rate: Optional[float] = MAX_RATE
@@ -207,6 +210,23 @@ class BinanceVenue:
         return make_book(payload.get("bids") or [], payload.get("asks") or [], venue=self.name, symbol=symbol,
                          depth=depth, ts=pd.Timestamp(int(stamp), unit="ms") if stamp else None)
 
+    def open_interest(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live open interest (``openInterest``, one request per symbol; default: every trading perp) valued
+        at the mark price of ``premiumIndex``. A symbol whose request fails is a row with its ``error``."""
+        require(self, Dataset.OPEN_INTEREST)
+        marks = {p["symbol"]: p.get("markPrice") for p in self.client.get("premiumIndex") or []}
+        if symbols is None:
+            symbols = sorted(m["symbol"] for m in self._symbols() if m.get("status") == "TRADING")
+        records: Dict[str, Dict[str, Any]] = {}
+        for symbol in dict.fromkeys(symbols):
+            try:
+                payload = self.client.get("openInterest", {"symbol": symbol})
+            except Exception as exc:  # one failing symbol must not stop the others
+                records[symbol] = {"error": f"{type(exc).__name__}: {exc}".splitlines()[0]}
+                continue
+            records[symbol] = parse_open_interest(payload, marks.get(symbol))
+        return make_open_interest(records, list(records))
+
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         # openInterestHist only reaches 30 days back: no history worth storing.
         require(self, Dataset.DAILY_METRICS)
@@ -228,6 +248,14 @@ def parse_funding_rates(records: List[Dict[str, Any]]) -> pd.DataFrame:
         "rate": frame["fundingRate"].astype(float).to_numpy(),
     }, index=index)
     return out.sort_index()
+
+
+def parse_open_interest(payload: Dict[str, Any], mark_price: Optional[str]) -> Dict[str, Any]:
+    """``openInterest`` payload + the symbol's mark price -> an open-interest record (base units, one side)."""
+    stamp = payload.get("time")
+    return {"open_interest_base": float(payload["openInterest"]),
+            "price": float(mark_price) if mark_price is not None else float("nan"), "price_kind": "mark",
+            "oi_convention": "one_side", "ts": pd.Timestamp(int(stamp), unit="ms") if stamp else None}
 
 
 def parse_klines(rows: List[List[Any]], price: str) -> pd.DataFrame:
@@ -254,4 +282,4 @@ def parse_klines(rows: List[List[Any]], price: str) -> pd.DataFrame:
 
 register_venue(BinanceVenue.name, BinanceVenue)
 
-__all__ = ["BinanceVenue", "parse_funding_rates", "parse_klines"]
+__all__ = ["BinanceVenue", "parse_funding_rates", "parse_klines", "parse_open_interest"]

@@ -16,6 +16,14 @@ live (`qmd-snapshot`, `qmd-options-daily`). **Instrument ids change** for restri
 Changed): consumers keyed on `instrument_id` map the Extended stock perps when they move to this version.
 
 ### Added
+- **`Dataset.OPEN_INTEREST`**: `Venue.open_interest(symbols=None)`, a live snapshot (not stored) on the six
+  adapters, one row per symbol (`OPEN_INTEREST_COLUMNS`: base units, price and its kind, USD value, the
+  venue's `oi_convention`, timestamp, per-symbol `error`), and `one_side_usd(snapshot)` to compare venues.
+  Conventions, checked on live payloads 2026-10-19: Lighter's `orderBookDetails.open_interest` counts one
+  side (half its both-sides `exchangeMetrics` series: 1.96 on BTC, 1.98 on ETH); Paradex's
+  `markets/summary.open_interest` counts both sides (= `open_interest_long + open_interest_short`);
+  Hyperliquid (`metaAndAssetCtxs`), Binance and Aster (`openInterest`, one request per symbol, mark price
+  from `premiumIndex`) and Extended (`marketStats`, USD as published) count one side.
 - **Paradex adapter** (`paradex`, perps only) over the public REST API (no SDK): instruments, funding,
   last/mark candles (1m-1h), specs, order book. Paradex funding is continuous; each whole hour becomes a
   settlement-equivalent event `rate = (index_h - index_{h-1}) / price` from the funding index (the

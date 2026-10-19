@@ -14,13 +14,15 @@ API quirks this adapter absorbs (verified 2026-10-15):
 - Info requests weigh 20 out of 1200 per minute per IP, i.e. 1 req/s sustained: the client is paced at
   1 req/s at most.
 - ``k`` prefixes mean x1000 (``kPEPE``); ``szDecimals`` is the size step.
+- ``metaAndAssetCtxs`` gives every perp's live context in one request; ``openInterest`` is in base units
+  and counts one side (the venue's convention), valued here at ``markPx``.
 """
 
 from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import pandas as pd
 
@@ -34,6 +36,7 @@ from quant_marketdata.venues.schema import (
     empty_frame,
     finalize_funding,
     make_book,
+    make_open_interest,
 )
 
 BASE_URL = "https://api.hyperliquid.xyz"
@@ -63,7 +66,7 @@ def _ms(value: datetime | pd.Timestamp) -> int:
 class HyperliquidVenue:
     name = "hyperliquid"
     capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.SPECS,
-                              Dataset.BOOK})
+                              Dataset.BOOK, Dataset.OPEN_INTEREST})
     resolutions = tuple(RESOLUTION_SECONDS)
 
     def __init__(self, client: Optional[JsonClient] = None, *, rate: float = 2.0) -> None:
@@ -146,6 +149,11 @@ class HyperliquidVenue:
                          venue=self.name, symbol=symbol, depth=depth,
                          ts=pd.Timestamp(int(payload["time"]), unit="ms") if payload.get("time") else None)
 
+    def open_interest(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live open interest of every perp from ``metaAndAssetCtxs`` (one request)."""
+        require(self, Dataset.OPEN_INTEREST)
+        return make_open_interest(parse_asset_ctxs(self._info({"type": "metaAndAssetCtxs"})), symbols)
+
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         require(self, Dataset.DAILY_METRICS)  # no open-interest history in the public API
         raise AssertionError("unreachable")
@@ -168,6 +176,18 @@ def parse_funding_history(records: List[Dict[str, Any]]) -> pd.DataFrame:
     return out.sort_index()
 
 
+def parse_asset_ctxs(payload: List[Any]) -> Dict[str, Dict[str, Any]]:
+    """``metaAndAssetCtxs`` ``[meta, ctxs]`` -> open-interest records by coin (base units, one side, mark)."""
+    meta, ctxs = payload[0], payload[1]
+    out = {}
+    for market, ctx in zip(meta.get("universe") or [], ctxs, strict=False):
+        price = ctx.get("markPx")
+        out[market["name"]] = {"open_interest_base": float(ctx.get("openInterest") or 0.0),
+                               "price": float(price) if price is not None else float("nan"),
+                               "price_kind": "mark", "oi_convention": "one_side"}
+    return out
+
+
 def parse_candles(records: List[Dict[str, Any]]) -> pd.DataFrame:
     if not records:
         return pd.DataFrame()
@@ -188,4 +208,4 @@ def parse_candles(records: List[Dict[str, Any]]) -> pd.DataFrame:
 
 register_venue(HyperliquidVenue.name, HyperliquidVenue)
 
-__all__ = ["HyperliquidVenue", "parse_candles", "parse_funding_history"]
+__all__ = ["HyperliquidVenue", "parse_asset_ctxs", "parse_candles", "parse_funding_history"]

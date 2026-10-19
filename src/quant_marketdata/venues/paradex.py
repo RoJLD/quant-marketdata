@@ -38,6 +38,9 @@ API quirks this adapter absorbs (verified 2026-10-18):
   request, resolutions 1, 3, 5, 15, 30 and 60 minutes, ``price_kind`` last or mark; rows are
   ``[t, o, h, l, c, volume]`` oldest first with the volume in USD, and hours without trades are absent.
 - ``orderbook/<market>`` serves aggregated levels, ``depth`` at most 100, without RPI orders.
+- ``markets/summary?market=ALL`` serves every market's live summary in one request (options included):
+  ``open_interest`` is in base units and counts **both sides** -- it equals ``open_interest_long +
+  open_interest_short`` (BTC 80.59 = 40.30 + 40.30, 2026-10-19).
 """
 
 from __future__ import annotations
@@ -45,7 +48,7 @@ from __future__ import annotations
 import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import pandas as pd
 
@@ -61,6 +64,7 @@ from quant_marketdata.venues.schema import (
     Dataset,
     empty_frame,
     make_book,
+    make_open_interest,
 )
 
 BASE_URL = "https://api.prod.paradex.trade/v1"
@@ -91,7 +95,7 @@ def asset_class(market: Dict[str, Any]) -> Optional[str]:
 class ParadexVenue(ParadexOptions):
     name = "paradex"
     capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
-                              Dataset.SPECS, Dataset.BOOK}) | OPTION_DATASETS
+                              Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST}) | OPTION_DATASETS
     resolutions = tuple(RESOLUTION_MINUTES)
 
     def __init__(self, client: Optional[JsonClient] = None, *, rate: float = 2.0,
@@ -191,6 +195,13 @@ class ParadexVenue(ParadexOptions):
         return make_book(payload.get("bids") or [], payload.get("asks") or [],
                          venue=self.name, symbol=symbol, ts=ts, depth=depth)
 
+    def open_interest(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live open interest of every perp from ``markets/summary`` (one request): base units, BOTH sides,
+        valued at the mark price."""
+        require(self, Dataset.OPEN_INTEREST)
+        summary = self.client.get("markets/summary", {"market": "ALL"}).get("results") or []
+        return make_open_interest(parse_summaries(summary), symbols)
+
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         require(self, Dataset.DAILY_METRICS)  # no open-interest history in the public API
         raise AssertionError("unreachable")
@@ -233,6 +244,20 @@ def parse_funding_samples(records: List[Dict[str, Any]]) -> pd.DataFrame:
     return out[FUNDING_COLUMNS + ["funding_index_raw"]]
 
 
+def parse_summaries(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """``markets/summary`` rows -> open-interest records of the perps (base units, both sides, mark)."""
+    out = {}
+    for r in records:
+        if not str(r.get("symbol", "")).endswith("-PERP"):
+            continue  # options and spot
+        price = r.get("mark_price")
+        out[r["symbol"]] = {"open_interest_base": float(r.get("open_interest") or 0.0),
+                            "price": float(price) if price is not None else float("nan"), "price_kind": "mark",
+                            "oi_convention": "both_sides",
+                            "ts": pd.Timestamp(int(r["created_at"]), unit="ms") if r.get("created_at") else None}
+    return out
+
+
 def parse_klines(records: List[List[Any]], price: str) -> pd.DataFrame:
     """``[t, o, h, l, c, volume_usd]`` rows -> candles; mark candles carry no volume."""
     if not records:
@@ -253,4 +278,5 @@ def parse_klines(records: List[List[Any]], price: str) -> pd.DataFrame:
 
 register_venue(ParadexVenue.name, ParadexVenue)
 
-__all__ = ["FIRST_EVENT", "INDEX_CONSISTENT_FROM", "ParadexVenue", "asset_class", "parse_funding_samples", "parse_klines"]
+__all__ = ["FIRST_EVENT", "INDEX_CONSISTENT_FROM", "ParadexVenue", "asset_class", "parse_funding_samples", "parse_klines",
+           "parse_summaries"]

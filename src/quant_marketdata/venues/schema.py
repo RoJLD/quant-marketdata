@@ -7,6 +7,10 @@ re-downloading.
 Funding convention: ``rate`` is the signed fraction paid over the funding interval, **positive when longs
 pay shorts**; ``rate_1h`` divides it by the interval in hours and is the column to compare across venues.
 
+Open interest (``Dataset.OPEN_INTEREST``, a live snapshot): venues publish it in base units or USD, counting ONE
+side (longs = shorts, the usual convention) or BOTH sides (longs + shorts). Each snapshot row carries its
+``oi_convention``; compare venues on ``one_side_usd``.
+
 Trading session (``session`` instrument column), as the venue declares it: ``"24x7"`` (continuous),
 ``"24x5"`` (round the clock on weekdays, closed at weekends), ``"no-overnight"`` (closed during the US
 overnight session), or ``None`` when the venue does not declare one. A restricted session is part of the
@@ -31,6 +35,7 @@ class Dataset(str, Enum):
     DAILY_METRICS = "daily_metrics"
     SPECS = "specs"
     BOOK = "book"  # live order book snapshot (not stored: the stream recorder keeps the history)
+    OPEN_INTEREST = "open_interest"  # live open-interest snapshot (not stored: consumers journal it)
     # Dated contracts (options and binaries): ``quant_marketdata.venues.contracts``.
     OPTION_CONTRACTS = "option_contracts"
     OPTION_CHAIN = "option_chain"
@@ -44,7 +49,7 @@ class Dataset(str, Enum):
 
 
 PERP_DATASETS = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
-                           Dataset.DAILY_METRICS, Dataset.SPECS, Dataset.BOOK})
+                           Dataset.DAILY_METRICS, Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST})
 CONTRACT_DATASETS = frozenset(Dataset) - PERP_DATASETS
 
 ASSET_CLASSES = frozenset({"crypto", "equity", "etf", "index", "rates", "commodity", "fx", "private"})
@@ -82,6 +87,10 @@ CANDLE_COLUMNS = ["open", "high", "low", "close", "volume_base", "volume_quote",
 
 DAILY_METRICS_COLUMNS = ["open_interest_usd", "volume_usd", "oi_convention"]
 
+OPEN_INTEREST_COLUMNS = ["symbol", "open_interest_base", "price", "open_interest_usd", "price_kind",
+                         "oi_convention", "ts", "error"]
+OI_CONVENTIONS = frozenset({"one_side", "both_sides"})
+
 
 def make_book(bids, asks, *, venue: str, symbol: str, ts=None, depth: int | None = None) -> dict:
     """Order book snapshot in the format of the friction functions (``paper_execution``,
@@ -98,6 +107,40 @@ def make_book(bids, asks, *, venue: str, symbol: str, ts=None, depth: int | None
 
     stamp = pd.Timestamp.now(tz="UTC").tz_localize(None) if ts is None else pd.Timestamp(ts)
     return {"bids": side(bids, True), "asks": side(asks, False), "ts": stamp, "venue": venue, "symbol": symbol}
+
+
+def make_open_interest(records: dict, symbols=None, *, ts=None) -> pd.DataFrame:
+    """Live open-interest snapshot, ``OPEN_INTEREST_COLUMNS``, one row per symbol.
+
+    ``records``: {native symbol: {"open_interest_base", "price", "price_kind", "oi_convention"} plus optionally
+    "open_interest_usd" (when the venue publishes the USD value itself), "ts" and "error"}. Without a published
+    USD value, ``open_interest_usd`` = base x price. ``symbols`` restricts the rows (default: every record); a
+    requested symbol without a record is a row with NaN values and ``error = "unknown symbol"``.
+    """
+    stamp = pd.Timestamp.now(tz="UTC").tz_localize(None) if ts is None else pd.Timestamp(ts)
+    rows = []
+    for symbol in (sorted(records) if symbols is None else list(dict.fromkeys(symbols))):
+        record = records.get(symbol)
+        if record is None:
+            record = {"error": "unknown symbol"}
+        convention = record.get("oi_convention")
+        if convention is not None and convention not in OI_CONVENTIONS:
+            raise ValueError(f"unknown open-interest convention {convention!r}")
+        base = float(record.get("open_interest_base", float("nan")))
+        price = float(record.get("price", float("nan")))
+        usd = record.get("open_interest_usd")
+        rows.append({"symbol": symbol, "open_interest_base": base, "price": price,
+                     "open_interest_usd": float(usd) if usd is not None else base * price,
+                     "price_kind": record.get("price_kind"), "oi_convention": convention,
+                     "ts": pd.Timestamp(record["ts"]) if record.get("ts") is not None else stamp,
+                     "error": record.get("error")})
+    return pd.DataFrame(rows, columns=OPEN_INTEREST_COLUMNS)
+
+
+def one_side_usd(snapshot: pd.DataFrame) -> pd.Series:
+    """Open interest in USD counting one side, whatever the venue's convention (both sides -> / 2)."""
+    both = snapshot["oi_convention"] == "both_sides"
+    return snapshot["open_interest_usd"].where(~both, snapshot["open_interest_usd"] / 2)
 
 
 def empty_frame(columns: list[str], index_name: str = "ts") -> pd.DataFrame:
@@ -163,6 +206,8 @@ __all__ = [
     "FUNDING_COLUMNS",
     "HOURS_PER_YEAR",
     "INSTRUMENT_COLUMNS",
+    "OI_CONVENTIONS",
+    "OPEN_INTEREST_COLUMNS",
     "PERP_DATASETS",
     "SESSIONS",
     "UnsupportedDataset",
@@ -170,4 +215,6 @@ __all__ = [
     "finalize_funding",
     "funding_grid",
     "make_book",
+    "make_open_interest",
+    "one_side_usd",
 ]
