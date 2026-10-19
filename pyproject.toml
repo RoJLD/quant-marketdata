@@ -38,6 +38,8 @@ dev = ["pytest>=7", "ruff>=0.4", "pyarrow>=14", "websockets>=12"]
 [project.scripts]
 qmd-download = "quant_marketdata.venues.download:main"
 qmd-record = "quant_marketdata.venues.stream.cli:main"
+qmd-snapshot = "quant_marketdata.venues.snapshot:main"
+qmd-options-daily = "quant_marketdata.venues.snapshot:daily_main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

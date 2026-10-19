@@ -26,7 +26,8 @@ API quirks this adapter absorbs (verified 2026-10-18):
 - Greeks are **undiscounted Black-76 on the forward ``f``** (the mark includes ``df``), ``vega`` per vol
   point and ``theta`` per calendar day: recomputed to 1e-4 on the recorded chain (BTC 23 OCT 82000 C and
   79000 P), ``greeks_reference = "forward"``.
-- ``get_option_settlement_prices`` serves the settlement price of the **last 12 expiries only**: the daily
+- ``get_option_settlement_prices`` serves the settlement prices of **~12 days of expiries only** (12 on
+  2026-10-18, 13 on 10-19: a time window, not a count): the daily
   task must keep them. The settlement method of the ``BTC-USD`` index is not documented (spec Q4):
   ``derive:BTC-USD`` has method ``unknown``.
 - ``get_trade_history`` (``currency``, ``instrument_type``, ``from_timestamp``/``to_timestamp`` in ms,
@@ -53,6 +54,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import time
 from datetime import datetime
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
@@ -84,6 +86,7 @@ VENUE = "derive"
 PAGE_SIZE = 1000
 FUNDING_INTERVAL_H = 1
 TRADE_WINDOW = pd.Timedelta(days=1)
+LISTING_TTL_S = 60.0
 HOUR = pd.Timedelta(hours=1)
 
 # Abbreviated ticker keys (deduced from the values, see the module docstring) -> meaning.
@@ -135,6 +138,7 @@ class DeriveVenue:
         self.client = client or JsonClient(BASE_URL, rate=rate)
         # Contract statuses depend on the time of the listing (expired after the expiry); injectable.
         self.clock = clock or (lambda: pd.Timestamp.now(tz="UTC").tz_localize(None))
+        self._listings: Dict[tuple, tuple] = {}  # (currency, expired) -> (monotonic time, records)
 
     def _call(self, method: str, payload: Optional[Dict[str, Any]] = None) -> Any:
         return _check(self.client.post(method, payload or {}))
@@ -202,8 +206,18 @@ class DeriveVenue:
     def option_contracts(self, underlying: Optional[str] = None, *, expired: bool = False) -> pd.DataFrame:
         require(self, Dataset.OPTION_CONTRACTS)
         currencies = [underlying] if underlying else self.option_currencies()
-        records = [r for c in currencies for r in self._instruments("option", c, expired)]
+        records = [r for c in currencies for r in self._option_listing(c, expired)]
         return parse_option_instruments(records, now=self.clock())
+
+    def _option_listing(self, currency: str, expired: bool) -> List[Dict[str, Any]]:
+        """A currency's option listing, reused for ``LISTING_TTL_S`` (a snapshot pass lists the contracts
+        for the registry, then ``option_chain`` needs the same listing for its expiries)."""
+        now = time.monotonic()
+        cached = self._listings.get((currency, expired))
+        if cached is None or now - cached[0] > LISTING_TTL_S:
+            cached = (now, self._instruments("option", currency, expired))
+            self._listings[(currency, expired)] = cached
+        return cached[1]
 
     def option_chain(self, underlying: str, expiry: Optional[datetime] = None) -> pd.DataFrame:
         require(self, Dataset.OPTION_CHAIN)
@@ -254,7 +268,7 @@ class DeriveVenue:
     def settlements(self, index: str, start: Optional[datetime] = None,
                     end: Optional[datetime] = None) -> pd.DataFrame:
         """Fixings of an option index (``BTC-USD`` as in ``option_details.index``, or the currency):
-        the last 12 expiries only."""
+        ~12 days of expiries only."""
         require(self, Dataset.SETTLEMENTS)
         currency = index.split("-")[0]
         result = self._call("get_option_settlement_prices", {"currency": currency})

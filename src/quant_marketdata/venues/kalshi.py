@@ -54,15 +54,15 @@ from typing import Any, Dict, Iterable, List, Optional
 import pandas as pd
 
 from quant_marketdata.venues.base import register_venue, require
-from quant_marketdata.venues.contracts.indexes import parse_fixing_method, settlement_index_info
+from quant_marketdata.venues.contracts.indexes import parse_fixing_method
 from quant_marketdata.venues.contracts.overrides import KALSHI_SERIES
+from quant_marketdata.venues.contracts.registry import binary_settlements, resolve_binary_contracts
 from quant_marketdata.venues.contracts.schema import (
     BINARY_CANDLE_COLUMNS,
     BINARY_QUOTE_COLUMNS,
     BINARY_SNAPSHOT_COLUMNS,
     BINARY_TRADE_COLUMNS,
     CADENCES,
-    SETTLEMENT_COLUMNS,
     frame_of,
     outcome_from_bounds,
     p_mid,
@@ -80,6 +80,8 @@ EVENT_PAGE = 200
 MARKET_PAGE = 1000
 PRICE_TICK = Decimal("0.01")
 PERIODS: Dict[str, int] = {"1m": 1, "1h": 60, "1d": 1440}
+SETTLEMENT_SOURCE = "markets.expiration_value"
+NESTED_EVENT_PAGE = 20  # a settled hourly event nests ~188 markets (~0.4 MB)
 _STATUSES = {"initialized": "scheduled", "unopened": "scheduled", "active": "active", "open": "active",
              "closed": "expired", "determined": "expired", "settled": "expired", "finalized": "expired",
              "disputed": "expired", "amended": "expired"}
@@ -173,8 +175,9 @@ class KalshiVenue:
         until = pd.Timestamp(until) if until is not None else None
         found, cursor, seen = [], None, set()
         while True:
-            payload = self.client.get("events", {"series_ticker": series, "status": status, "limit": EVENT_PAGE,
-                                                 "with_nested_markets": nested, "cursor": cursor})
+            payload = self.client.get("events", {
+                "series_ticker": series, "status": status, "limit": NESTED_EVENT_PAGE if nested else EVENT_PAGE,
+                "with_nested_markets": nested, "cursor": cursor})
             page = payload.get("events") or []
             for event in page:
                 strike = utc_naive(event.get("strike_date"))
@@ -304,7 +307,8 @@ class KalshiVenue:
         """One fixing per settled event of a declared series (``expiration_value``), with its method."""
         require(self, Dataset.SETTLEMENTS)
         contracts = self.binary_contracts(series, status="settled", start=start, end=end)
-        return settlements_from_contracts(contracts, self._declared(series)["settlement_index_id"])
+        build = resolve_binary_contracts(self.name, contracts, self.series_table)
+        return binary_settlements(build.contracts, source_endpoint=SETTLEMENT_SOURCE)
 
 
 # -- parsers (pure, unit-tested on recorded payloads) ----------------------------------------------
@@ -455,34 +459,6 @@ def parse_orderbook(payload: Dict[str, Any], symbol: str, depth: int = 50) -> di
     return make_book(bids, asks, venue=VENUE, symbol=symbol, depth=depth)
 
 
-def settlements_from_contracts(contracts: pd.DataFrame, index_id: str,
-                               seen_at: Optional[pd.Timestamp] = None) -> pd.DataFrame:
-    """One ``Settlement`` row per settled event: its ``expiration_value`` and its markets' fixing method
-    (``mixed`` if they disagree)."""
-    seen_at = pd.Timestamp.now(tz="UTC").tz_localize(None) if seen_at is None else pd.Timestamp(seen_at)
-    settled = contracts[contracts["settlement_value"].notna()] if not contracts.empty else contracts
-    rows = []
-    for event, group in settled.groupby("venue_event_id", sort=False):
-        values = group["settlement_value"].unique()
-        methods = group["fixing_method"].dropna().unique()
-        if len(values) != 1:
-            logger.warning("Kalshi %s: markets disagree on expiration_value %s", event, sorted(values))
-            continue
-        rows.append({
-            "ts": group["expiry"].iloc[0],
-            "venue": VENUE,
-            "settlement_index_id": index_id,
-            "settlement_price": float(values[0]),
-            "method": methods[0] if len(methods) == 1 else "mixed",
-            "method_source": settlement_index_info(index_id)["method_source"],
-            "source_endpoint": "markets.expiration_value",
-            "venue_ref": event,
-            "first_seen_at": seen_at,
-        })
-    frame = frame_of(rows, SETTLEMENT_COLUMNS)
-    return frame.sort_values("ts").reset_index(drop=True) if not frame.empty else frame
-
-
 def recomputed_outcomes(contracts: pd.DataFrame) -> pd.Series:
     """Outcome recomputed from ``settlement_value`` and the canonical bounds (the check against
     ``result``)."""
@@ -502,5 +478,4 @@ __all__ = [
     "parse_orderbook",
     "parse_trades",
     "recomputed_outcomes",
-    "settlements_from_contracts",
 ]

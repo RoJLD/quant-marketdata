@@ -157,7 +157,7 @@ def test_trades_keep_the_taker_side_and_no_trader_identifier():
     assert trades["index_at_trade"].gt(50000).all()
 
 
-def test_settlement_prices_last_12_expiries():
+def test_settlement_prices_of_recent_expiries():
     frame = parse_settlement_prices(_fixture("settlement_prices_btc")["result"]["expiries"], "BTC-USD",
                                     seen_at=NOW)
     assert len(frame) == 12 and (frame["ts"].dt.hour == 8).all()
@@ -240,7 +240,7 @@ def test_live_derive_btc_chain_and_settlements():
     assert build.ok, build.unresolved.head()
     chain = venue.option_chain("BTC")
     assert len(chain) > 100 and chain["iv_mark"].dropna().between(0.05, 5).all()
-    assert len(venue.settlements("BTC-USD")) == 12
+    assert 10 <= len(venue.settlements("BTC-USD")) <= 16  # ~12 days of expiries (a window, not a count)
     now = pd.Timestamp.now(tz="UTC").tz_localize(None).floor("h")
     funding = venue.funding("BTC-PERP", now - pd.Timedelta(days=2), now)
     assert 40 <= len(funding) <= 49 and funding["rate_1h"].abs().max() < 1e-3

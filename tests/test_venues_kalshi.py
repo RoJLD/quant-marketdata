@@ -17,6 +17,7 @@ from quant_marketdata.venues.contracts import (
     BinaryVenue,
     resolve_binary_contracts,
 )
+from quant_marketdata.venues.contracts.registry import binary_settlements
 from quant_marketdata.venues.kalshi import (
     KalshiVenue,
     kalshi_bounds,
@@ -26,7 +27,6 @@ from quant_marketdata.venues.kalshi import (
     parse_orderbook,
     parse_trades,
     recomputed_outcomes,
-    settlements_from_contracts,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures" / "kalshi"
@@ -182,12 +182,14 @@ def test_trades_and_book():
 
 
 def test_settlements_one_row_per_event():
-    contracts = pd.concat([_settled("event_kxbtcd_settled")], ignore_index=True)
-    frame = settlements_from_contracts(contracts, "cfb:BRTI", seen_at=pd.Timestamp("2026-10-18 09:20"))
+    contracts = resolve_binary_contracts("kalshi", _settled("event_kxbtcd_settled")).contracts
+    frame = binary_settlements(contracts, source_endpoint="markets.expiration_value",
+                               seen_at=pd.Timestamp("2026-10-18 09:20"))
     assert len(frame) == 1
     row = frame.iloc[0]
     assert (row["ts"], row["settlement_price"], row["method"], row["venue_ref"]) == \
         (pd.Timestamp("2026-10-18 08:00"), 81568.22, "mean", "KXBTCD-26OCT1804")
+    assert (row["settlement_index_id"], row["method_source"]) == ("cfb:BRTI", "rules_text")
 
 
 # -- adapter -----------------------------------------------------------------------------------------
