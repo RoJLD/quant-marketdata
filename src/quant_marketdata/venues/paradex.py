@@ -52,7 +52,7 @@ import pandas as pd
 from quant_marketdata.venues.base import register_venue, require
 from quant_marketdata.venues.http import JsonClient
 from quant_marketdata.venues.paging import paged_fetch
-from quant_marketdata.venues.paradex_options import ParadexOptions
+from quant_marketdata.venues.paradex_options import OPTION_DATASETS, ParadexOptions
 from quant_marketdata.venues.schema import (
     CANDLE_COLUMNS,
     FUNDING_COLUMNS,
@@ -91,7 +91,7 @@ def asset_class(market: Dict[str, Any]) -> Optional[str]:
 class ParadexVenue(ParadexOptions):
     name = "paradex"
     capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
-                              Dataset.SPECS, Dataset.BOOK})
+                              Dataset.SPECS, Dataset.BOOK}) | OPTION_DATASETS
     resolutions = tuple(RESOLUTION_MINUTES)
 
     def __init__(self, client: Optional[JsonClient] = None, *, rate: float = 2.0,
