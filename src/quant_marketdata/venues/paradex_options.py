@@ -406,6 +406,13 @@ class ParadexOptions:
                 ~self._listing["venue_symbol"].isin(self._resolved["venue_symbol"])]], ignore_index=True)
         return self._resolved
 
+    def resolved_contracts(self, underlying: Optional[str] = None) -> pd.DataFrame:
+        """The cached live listing with the registry's identity columns (``contract_id``... empty for the
+        unresolved ones), fetched on first use."""
+        resolved = self._contracts([])
+        base = _base(underlying)
+        return resolved if base is None else resolved[resolved["venue_base"] == base].reset_index(drop=True)
+
     def option_chain(self, underlying: str, expiry: Optional[datetime] = None, *,
                      ts_snapshot: Optional[pd.Timestamp] = None) -> pd.DataFrame:
         """Live chain of one native base from ``markets/summary?market=ALL`` (one ~7 MB call); the listing

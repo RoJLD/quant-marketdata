@@ -19,6 +19,7 @@ from quant_marketdata.venues.contracts import (
     OPTION_SNAPSHOT_COLUMNS,
     OPTION_TRADE_COLUMNS,
     SETTLEMENT_COLUMNS,
+    ContractStore,
     OptionsVenue,
     resolve_option_contracts,
     update_contract_registry,
@@ -35,6 +36,11 @@ from quant_marketdata.venues.paradex_options import (
     parse_option_trades,
     payoff,
     settlement_rows,
+)
+from quant_marketdata.venues.paradex_snapshot import (
+    download_mark_candles,
+    settle_expired,
+    snapshot_pass,
 )
 from quant_marketdata.venues.schema import Dataset
 
@@ -347,3 +353,87 @@ def test_mark_candles_and_settlements_through_the_venue():
     recent = venue.settlements("ETH")  # from the SETTLED events of markets/history
     assert recent["ts"].tolist() == [pd.Timestamp("2026-10-18 08:00")]
     assert recent["settlement_price"].iloc[0] == pytest.approx(2406.5910561466653)
+
+
+# -- passes over a ContractStore -------------------------------------------------------------------
+
+
+@pytest.fixture
+def frozen(monkeypatch):
+    """Freeze the venue clock (statuses and seen-at stamps) at ``AS_OF``."""
+    import quant_marketdata.venues.paradex_options as options
+    import quant_marketdata.venues.paradex_snapshot as passes
+
+    clock = {"now": AS_OF}
+    monkeypatch.setattr(options, "_now", lambda: clock["now"])
+    monkeypatch.setattr(passes, "_now", lambda: clock["now"])
+    return clock
+
+
+def test_snapshot_pass_writes_registry_chains_and_heartbeat(tmp_path, frozen):
+    store = ContractStore.at(tmp_path)
+    report = snapshot_pass(ParadexVenue(FakeParadexOptions()), store, ts_snapshot=AS_OF)
+    assert report["ok"] and report["contracts"] == 10 and report["unresolved"] == 0
+    assert report["chains"] == {"BTC-USD": 6, "ETH-USD": 0} and report["universe_changes"] > 0
+    registry = store.read(store.option_registry_path("paradex"))
+    assert len(registry) == 10 and registry["first_seen_at"].eq(AS_OF).all()
+    later = AS_OF + pd.Timedelta(minutes=15)
+    snapshot_pass(ParadexVenue(FakeParadexOptions()), store, ts_snapshot=later)
+    chains = store.read_snapshots("paradex", Dataset.OPTION_CHAIN, "BTC-USD")
+    assert len(chains) == 12 and set(chains["ts_snapshot"]) == {AS_OF, later}  # append-only
+    assert json.loads(store.heartbeat_path("paradex").read_text())["ok"] is True
+
+
+def test_snapshot_pass_reports_a_failing_step_and_runs_the_others(tmp_path, frozen):
+    class Broken(FakeParadexOptions):
+        def get(self, path, params=None):
+            if path == "markets/summary":
+                raise HttpError(503, path, "down")
+            return super().get(path, params)
+
+    report = snapshot_pass(ParadexVenue(Broken()), ContractStore.at(tmp_path), ts_snapshot=AS_OF)
+    assert not report["ok"] and report["contracts"] == 10 and set(report["errors"]) == {"BTC-USD", "ETH-USD"}
+
+
+def test_settle_expired_fills_the_registry_and_the_settlement_file(tmp_path, frozen):
+    store = ContractStore.at(tmp_path)
+    markets = _fixture("option_markets")["results"]
+    expiring = {**copy.deepcopy(markets[0]), "symbol": "BTC-USD-18OCT26-81000-C", "strike_price": "81000",
+                "expiry_at": int(pd.Timestamp("2026-10-18 08:00").value // 10**6)}
+
+    class WithExpiring(FakeParadexOptions):
+        def __init__(self, listing):
+            super().__init__()
+            self.listing = listing
+
+        def get(self, path, params=None):
+            return {"results": self.listing} if path == "markets" else super().get(path, params)
+
+    frozen["now"] = pd.Timestamp("2026-10-17 12:00")
+    snapshot_pass(ParadexVenue(WithExpiring(markets + [expiring])), store, underlyings=())
+    frozen["now"] = AS_OF  # the contract left the listing at its expiry
+    snapshot_pass(ParadexVenue(WithExpiring(markets)), store, underlyings=())
+    report = settle_expired(ParadexVenue(FakeParadexOptions()), store)
+    assert (report["fixings"], report["contracts_settled"]) == (1, 1)
+    registry = store.read(store.option_registry_path("paradex")).set_index("venue_symbol")
+    row = registry.loc["BTC-USD-18OCT26-81000-C"]
+    assert row["status"] == "expired" and row["settlement_price"] == pytest.approx(81587.70086941296)
+    assert row["settlement_source"] == "markets/settlement-price" and row["settlement_seen_at"] == AS_OF
+    fixings = store.read(store.settlements_path("paradex", "paradex:BTC"))
+    assert fixings["ts"].tolist() == [pd.Timestamp("2026-10-18 08:00")] and fixings["method"].iloc[0] == "twap_30min"
+    assert settle_expired(ParadexVenue(FakeParadexOptions()), store)["fixings"] == 0  # nothing left to do
+
+
+def test_mark_candles_per_contract_and_one_underlying_series(tmp_path, frozen):
+    store = ContractStore.at(tmp_path)
+    frozen["now"] = pd.Timestamp("2026-10-18 16:00")
+    report = download_mark_candles(ParadexVenue(FakeParadexOptions()), store, "BTC")
+    assert report["contracts"] == 6 and not report["errors"]
+    candles = store.read_monthly("paradex", Dataset.OPTION_MARK_CANDLES, "BTC-USD", resolution="1h")
+    marks = candles[candles["price_type"] == "mark"]
+    assert marks["venue_symbol"].nunique() == 6 and marks["contract_id"].notna().all()
+    spot = candles[candles["price_type"] == "underlying"]
+    assert set(spot["venue_symbol"]) == {"BTC-USD"} and spot["contract_id"].isna().all() and len(spot) == 3
+    download_mark_candles(ParadexVenue(FakeParadexOptions()), store, "BTC")
+    again = store.read_monthly("paradex", Dataset.OPTION_MARK_CANDLES, "BTC-USD", resolution="1h")
+    assert len(again) == len(candles)  # merged on (venue_symbol, price_type, ts)
