@@ -4,8 +4,7 @@
   set resolves by rule to ``<BASE>-USD`` (asset class ``crypto``). Anything else needs an entry in
   ``OPTION_UNDERLYINGS`` or is reported unresolved -- never matched by name similarity.
 - ``OPTION_UNDERLYINGS[venue][native base]``: the fields an override sets (``base``, ``quote``,
-  ``asset_class``, ``underlying_ref``) and a one-line ``why``. Venues add their own entries here (Paradex's
-  XAU, CL, SPCX, US100, US500, META, MU, MSTR belong to its options adapter).
+  ``asset_class``, ``underlying_ref``) and a one-line ``why``: every venue's entries live here, in one reviewable table.
 - ``KALSHI_SERIES``: the only source of a Kalshi series' underlying and settlement index (never the series
   name). A series missing from the table is not even downloaded.
 """
@@ -34,8 +33,20 @@ DERIVE: Dict[str, Override] = {
        for base in ("CC", "LIT", "VVV", "PUMP")},
 }
 
+def _classify(bases: str, asset_class: str, why: str) -> Dict[str, Override]:
+    return {base: {"asset_class": asset_class, "underlying_ref": base, "why": why} for base in bases.split()}
+
+
+# Paradex option bases that are not crypto tickers (the crypto ones resolve through CRYPTO_BASES).
+PARADEX: Dict[str, Override] = {
+    **_classify("XAU CL", "commodity", "Paradex option on a commodity (XAU spot gold, CL crude oil)"),
+    **_classify("SPCX META MU MSTR", "equity", "Paradex option on a stock (as its perp: Paradex RWA)"),
+    **_classify("US500 US100", "index", "Paradex option on an equity index"),
+}
+
 OPTION_UNDERLYINGS: Dict[str, Dict[str, Override]] = {
     "derive": DERIVE,
+    "paradex": PARADEX,
 }
 
 KALSHI_SERIES: Dict[str, Override] = {

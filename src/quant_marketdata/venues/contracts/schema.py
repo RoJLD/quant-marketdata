@@ -21,6 +21,12 @@ probabilities on [0, 1]; ``p_mid`` is NaN when a side is missing (never 0.5 by d
 ``k_low <= S_T < k_high`` at the fixing's resolution, NaN meaning unbounded. ``outcome`` is 1 when YES pays,
 0 otherwise, NaN when not settled or voided.
 
+``settlement_price`` (option contracts and ``Settlement`` rows) is the **value of the settlement index at the
+fixing** -- the same for every strike of an expiry (Derive ``option_details.settlement_price``, Deribit
+``delivery_price``, Paradex ``underlying_twap_price``), never a contract's payoff; a venue that also serves
+the payoff keeps it as ``settlement_payoff_raw``. Binary contracts call the same value ``settlement_value``
+(Kalshi ``expiration_value``).
+
 Every converted value keeps its native value in a ``*_raw`` column; native fields without a canonical
 equivalent are kept as ``raw_<field>`` columns. Nothing is read from a contract's name except to cross-check
 the structured fields (see ``contracts.registry``).
@@ -80,7 +86,7 @@ OPTION_CONTRACT_COLUMNS = [
     "delisted_at",
     "status",
     "status_raw",
-    "settlement_price",
+    "settlement_price",  # index value at the fixing, not the payoff
     "settlement_source",
     "settlement_seen_at",
     "first_seen_at",

@@ -7,8 +7,10 @@ equalize two indexes.
 
 Decisions kept from the spec's open questions (§6, validated 2026-10-18 with their defaults):
 
-- Q3 Paradex: the settlement price and method are not served nor documented -> ``paradex:<BASE>`` has method
-  ``unknown`` (no entry below).
+- Q3 Paradex: answered after the spec (2026-10-18, Paradex options adapter): the docs
+  (trading/dated-options/overview) define the settlement as the 30-minute TWAP of the Paradex spot oracle
+  price ending at expiry, and ``GET markets/settlement-price`` serves it (``underlying_twap_price``) for
+  expiries from 2026-05-21 -> ``paradex:<BASE>`` is ``twap_30min`` / ``venue_doc``.
 - Q4 Derive: the settlement method of its ``BTC-USD`` index is unknown -> ``unknown``.
 - Q6 Deribit: delivery = TWAP of the index over the 30 minutes before 08:00 UTC, from the venue's
   documentation, still to be reconfirmed and dated -> ``venue_doc``.
@@ -73,6 +75,18 @@ SETTLEMENT_INDEXES: Dict[str, IndexInfo] = {
         "verified": "2026-10-18",
         "note": "as derive:BTC-USD",
     },
+    # Paradex: one index per option base (the 14 bases listed on 2026-10-18).
+    **{f"paradex:{base}": {
+        "name": f"Paradex {base} spot oracle price",
+        "method": "twap_30min",
+        "method_source": "venue_doc",
+        "used_by": f"paradex {base} options",
+        "verified": "2026-10-18",
+        "note": "30-min TWAP of the Paradex spot oracle price ending at expiry (docs "
+                "trading/dated-options/overview); served by GET markets/settlement-price "
+                "(underlying_twap_price) for expiries from 2026-05-21",
+    } for base in ("BTC", "ETH", "SOL", "HYPE", "NEAR", "ZEC", "XAU", "CL", "SPCX", "META", "MU", "MSTR",
+                   "US100", "US500")},
 }
 
 _UNKNOWN: IndexInfo = {"method": "unknown", "method_source": "unknown"}

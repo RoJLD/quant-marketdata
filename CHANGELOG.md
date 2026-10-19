@@ -30,7 +30,7 @@ Quant-lab repo's `docs/PLATFORM.md`.
   registry separate from the perp registry (underlying from structured fields, the name only
   cross-checked, `delisted` before expiry and `expired` after, settlements kept with
   `settlement_seen_at`, `universe_change` events); explicit tables for underlying overrides, Kalshi series,
-  settlement indexes (`cfb:BRTI`, `deribit:btc_usd`...) with per-market fixing methods, and fee models
+  settlement indexes (`cfb:BRTI`, `deribit:btc_usd`, `paradex:<BASE>`...) with per-market fixing methods, and fee models
   (`documented` / `unconfirmed`); a store partitioned by day or month with append-only snapshot parts
   compacted daily (`ContractStore`).
 - `Dataset` members for dated contracts (`OPTION_CONTRACTS`, `OPTION_CHAIN`, ..., `SETTLEMENTS`) and

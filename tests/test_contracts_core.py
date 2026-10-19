@@ -87,7 +87,8 @@ def test_settlement_indexes_declared_or_unknown():
     assert settlement_index_info("deribit:btc_usd")["method"] == "twap_30min"
     assert settlement_index_info("deribit:btc_usd")["method_source"] == "venue_doc"
     assert settlement_index_info("cfb:BRTI")["method_source"] == "rules_text"
-    assert settlement_index_info("paradex:BTC")["method"] == "unknown"
+    assert settlement_index_info("paradex:BTC")["method"] == "twap_30min"
+    assert settlement_index_info("paradex:XYZ")["method"] == "unknown"
 
 
 def test_kalshi_quadratic_fee_rounds_up_to_the_cent():
@@ -158,7 +159,7 @@ def test_resolve_options_rule_override_and_unresolved(name_parser):
     assert contracts.loc["XAUT-20261023-4000-P", "underlying_ref"] == "XAU"
     assert contracts.loc["XAUT-20261023-4000-P", "mapping_source"] == "override"
     reasons = dict(zip(build.unresolved["venue_symbol"], build.unresolved["reason"], strict=True))
-    assert reasons["CL-20261023-60-C"] == "no rule or override for base 'CL'"
+    assert reasons["CL-20261023-60-C"] == "no rule or override for base 'CL'"  # testvenue has no override
     assert reasons["BTC-20261023-83000-C"] == "name_fields_mismatch: strike"
     assert reasons["BTC-20261024-85000-P"] == "name_fields_mismatch: expiry"
     assert reasons["ETH-20261023-2000-X"].startswith("missing or invalid structured field")
@@ -339,3 +340,20 @@ def test_monthly_partitions_merge_on_keys(tmp_path):
     assert store.last_partition("kalshi", Dataset.BINARY_CANDLES, "KXBTCD", "1m") == "2026-10"
     with pytest.raises(ValueError):
         store.merge_monthly("kalshi", Dataset.OPTION_CHAIN, "BTC-USD", frame, ["ts"])
+
+
+def test_paradex_option_bases_resolve_from_the_shared_tables():
+    expiry = pd.Timestamp("2026-10-23 17:30")
+    listing = _options([
+        {"venue": "paradex", "venue_symbol": "XAU-USD-23OCT26-4000-C", "venue_base": "XAU", "venue_quote": "USD",
+         "expiry": expiry, "strike": 4000.0, "option_type": "C", "settlement_index_raw": "XAU"},
+        {"venue": "paradex", "venue_symbol": "US500-USD-23OCT26-6000-P", "venue_base": "US500",
+         "venue_quote": "USD", "expiry": expiry, "strike": 6000.0, "option_type": "P",
+         "settlement_index_raw": "US500"},
+    ])
+    build = resolve_option_contracts("paradex", listing)
+    assert build.ok
+    rows = build.contracts.set_index("venue_base")
+    assert rows.loc["XAU", "asset_class"] == "commodity" and rows.loc["US500", "asset_class"] == "index"
+    assert rows.loc["XAU", "contract_id"] == "XAU-USD-20261023T1730-4000-C"
+    assert settlement_index_info(rows.loc["XAU", "settlement_index_id"])["method"] == "twap_30min"
