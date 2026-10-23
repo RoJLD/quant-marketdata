@@ -65,7 +65,7 @@ SETTLEMENT_INDEXES: Dict[str, IndexInfo] = {
         "method_source": "unknown",
         "used_by": "derive BTC options",
         "verified": "2026-10-18",
-        "note": "settlement prices served for the last 12 expiries only; method not documented (spec Q4)",
+        "note": "settlement prices served for ~12 days of expiries only; method not documented (spec Q4)",
     },
     "derive:ETH-USD": {
         "name": "Derive ETH-USD index",

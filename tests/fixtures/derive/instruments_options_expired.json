@@ -1,0 +1,75 @@
+{
+ "id": "fixture",
+ "result": {
+  "instruments": [
+   {
+    "instrument_type": "option",
+    "instrument_name": "BTC-20261018-95000-P",
+    "risk_universe_id": 1,
+    "scheduled_activation": 1791964800,
+    "scheduled_deactivation": 1792310340,
+    "is_active": false,
+    "tick_size": "1",
+    "minimum_amount": "0.01",
+    "maximum_amount": "1000",
+    "amount_step": "0.00001",
+    "mark_price_fee_rate_cap": "0.125",
+    "maker_fee_rate": "0.0001",
+    "taker_fee_rate": "0.0003",
+    "base_fee": "0.5",
+    "base_currency": "BTC",
+    "quote_currency": "USDC",
+    "option_details": {
+     "index": "BTC-USD",
+     "expiry": 1792310400,
+     "strike": "95000",
+     "option_type": "P",
+     "settlement_price": "81585.941225826275"
+    },
+    "perp_details": null,
+    "erc20_details": null,
+    "base_asset_address": "0xd0711b9eBE84b778483709CDe62BacFDBAE13623",
+    "base_asset_sub_id": "40802189312001792310400",
+    "pro_rata_fraction": "0.8",
+    "fifo_min_allocation": "1",
+    "pro_rata_amount_step": "0.001"
+   },
+   {
+    "instrument_type": "option",
+    "instrument_name": "BTC-20261017-95000-P",
+    "risk_universe_id": 1,
+    "scheduled_activation": 1791878400,
+    "scheduled_deactivation": 1792223940,
+    "is_active": false,
+    "tick_size": "1",
+    "minimum_amount": "0.01",
+    "maximum_amount": "1000",
+    "amount_step": "0.00001",
+    "mark_price_fee_rate_cap": "0.125",
+    "maker_fee_rate": "0.0001",
+    "taker_fee_rate": "0.0003",
+    "base_fee": "0.5",
+    "base_currency": "BTC",
+    "quote_currency": "USDC",
+    "option_details": {
+     "index": "BTC-USD",
+     "expiry": 1792224000,
+     "strike": "95000",
+     "option_type": "P",
+     "settlement_price": "81594.436387304401"
+    },
+    "perp_details": null,
+    "erc20_details": null,
+    "base_asset_address": "0xd0711b9eBE84b778483709CDe62BacFDBAE13623",
+    "base_asset_sub_id": "40802189312001792224000",
+    "pro_rata_fraction": "0.8",
+    "fifo_min_allocation": "1",
+    "pro_rata_amount_step": "0.001"
+   }
+  ],
+  "pagination": {
+   "num_pages": 1,
+   "count": 2
+  }
+ }
+}

@@ -4,7 +4,8 @@
   set resolves by rule to ``<BASE>-USD`` (asset class ``crypto``). Anything else needs an entry in
   ``OPTION_UNDERLYINGS`` or is reported unresolved -- never matched by name similarity.
 - ``OPTION_UNDERLYINGS[venue][native base]``: the fields an override sets (``base``, ``quote``,
-  ``asset_class``, ``underlying_ref``) and a one-line ``why``: every venue's entries live here, in one reviewable table.
+  ``asset_class``, ``underlying_ref``) and a one-line ``why``: every venue's entries live here, in one
+  reviewable table.
 - ``KALSHI_SERIES``: the only source of a Kalshi series' underlying and settlement index (never the series
   name). A series missing from the table is not even downloaded.
 """
@@ -32,6 +33,7 @@ DERIVE: Dict[str, Override] = {
     **{base: _token(f"Derive currency {base}: a token listed with perp and options on Derive")
        for base in ("CC", "LIT", "VVV", "PUMP")},
 }
+
 
 def _classify(bases: str, asset_class: str, why: str) -> Dict[str, Override]:
     return {base: {"asset_class": asset_class, "underlying_ref": base, "why": why} for base in bases.split()}

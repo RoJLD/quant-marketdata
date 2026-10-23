@@ -1,6 +1,6 @@
 """Venue-agnostic market-data layer: one ``Venue`` protocol, canonical schemas, an instrument registry and
 an incremental Parquet store. Adapters register themselves on import: Lighter, Hyperliquid, Binance
-(USD-M futures), Extended, Aster and Paradex (perps).
+(USD-M futures), Extended, Aster, Paradex (perps), Derive (perps + options), Deribit (options) and Kalshi (binaries).
 
 Read side::
 
@@ -17,10 +17,13 @@ import pandas as pd
 from quant_marketdata.venues.aster import AsterVenue
 from quant_marketdata.venues.base import Venue, available_venues, get_venue, register_venue
 from quant_marketdata.venues.binance import BinanceVenue
+from quant_marketdata.venues.deribit import DeribitVenue
+from quant_marketdata.venues.derive import DeriveVenue
 from quant_marketdata.venues.download import DownloadPlan, DownloadResult, download_venue
 from quant_marketdata.venues.extended import ExtendedVenue
 from quant_marketdata.venues.http import HttpError, JsonClient, RateLimiter
 from quant_marketdata.venues.hyperliquid import HyperliquidVenue
+from quant_marketdata.venues.kalshi import KalshiVenue
 from quant_marketdata.venues.lighter import LighterVenue
 from quant_marketdata.venues.paradex import ParadexVenue
 from quant_marketdata.venues.registry import RegistryBuild, resolve, update_registry
@@ -69,12 +72,15 @@ __all__ = [
     "AsterVenue",
     "BinanceVenue",
     "Dataset",
+    "DeribitVenue",
+    "DeriveVenue",
     "DownloadPlan",
     "DownloadResult",
     "ExtendedVenue",
     "HttpError",
     "HyperliquidVenue",
     "JsonClient",
+    "KalshiVenue",
     "LighterVenue",
     "ParadexVenue",
     "ROOT_ENV",

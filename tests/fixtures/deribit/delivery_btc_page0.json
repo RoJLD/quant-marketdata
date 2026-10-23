@@ -1,0 +1,21 @@
+{
+ "jsonrpc": "2.0",
+ "result": {
+  "data": [
+   {
+    "date": "2026-10-18",
+    "delivery_price": 81583.27
+   },
+   {
+    "date": "2026-10-17",
+    "delivery_price": 81593.0
+   },
+   {
+    "date": "2026-10-16",
+    "delivery_price": 82111.38
+   }
+  ],
+  "records_total": 5
+ },
+ "testnet": false
+}

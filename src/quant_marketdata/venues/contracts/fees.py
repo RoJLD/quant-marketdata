@@ -4,7 +4,8 @@ venue composes them, with ``fee_model_status`` ``documented`` (read in the venue
 ``unconfirmed`` (inferred, to be checked by a human before a net-of-fees result is trusted).
 
 Decisions kept from the spec's open questions (§6): Q4 Derive's composition (rate x index notional + a
-fixed fee, capped at 12.5 % of the premium?) and the unit of its ``base_fee`` are unconfirmed; Q5 Kalshi's
+fixed fee, capped at 12.5 % of the premium?) and the unit of its ``base_fee`` are unconfirmed; Paradex's
+base of the rate (underlying notional) is inferred, hence unconfirmed too; Q5 Kalshi's
 quadratic coefficient, rounding and maker fees could not be read (the published schedule answered 429 to a
 script, not bypassed) -- the formula below carries the commonly cited taker coefficient as a parameter and
 stays ``unconfirmed`` until the schedule is read.
@@ -27,6 +28,13 @@ FEE_MODELS: Dict[str, Dict[str, str]] = {
         "fee_model_status": "unconfirmed",
         "note": "commissions served per instrument (0.0003); the premium cap is from Deribit's fee page, not "
                 "re-read for this release",
+    },
+    "paradex": {
+        "fee_model": "min(rate x size x spot, 0.125 x premium), rebates floored at -0.125 x premium",
+        "fee_model_status": "unconfirmed",
+        "note": "fee_config per market (interactive, api and rpi maker/taker fees, fee_cap 0.125, fee_floor "
+                "-0.125); the underlying notional as the base of the 0.01 % rate is inferred (Paradex options "
+                "adapter, 2026-10-19)",
     },
     "kalshi": {
         "fee_model": "ceil_cent(coefficient x fee_multiplier x contracts x P x (1 - P))",

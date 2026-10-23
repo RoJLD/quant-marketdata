@@ -1,0 +1,55 @@
+{
+ "jsonrpc": "2.0",
+ "result": {
+  "trades": [
+   {
+    "trade_seq": 366,
+    "trade_id": "453532958",
+    "timestamp": 1792347980174,
+    "tick_direction": 0,
+    "price": 0.055,
+    "mark_price": 0.05492269,
+    "iv": 34.74,
+    "instrument_name": "BTC-30OCT26-85000-P",
+    "index_price": 81023.23,
+    "direction": "sell",
+    "contracts": 0.4,
+    "amount": 0.4
+   },
+   {
+    "trade_seq": 290,
+    "trade_id": "453533031",
+    "timestamp": 1792348027610,
+    "tick_direction": 0,
+    "price": 0.0053,
+    "mark_price": 0.00545236,
+    "iv": 36.62,
+    "instrument_name": "BTC-27NOV26-96000-C",
+    "index_price": 81024.88,
+    "direction": "buy",
+    "contracts": 5.0,
+    "combo_trade_id": "453533028",
+    "amount": 5.0,
+    "combo_id": "BTC-CBUT-27NOV26-96000_100000_105000"
+   },
+   {
+    "trade_seq": 387,
+    "trade_id": "453533029",
+    "timestamp": 1792348027610,
+    "tick_direction": 2,
+    "price": 0.003,
+    "mark_price": 0.00293453,
+    "iv": 38.03,
+    "instrument_name": "BTC-27NOV26-100000-C",
+    "index_price": 81024.88,
+    "direction": "sell",
+    "contracts": 10.0,
+    "combo_trade_id": "453533028",
+    "amount": 10.0,
+    "combo_id": "BTC-CBUT-27NOV26-96000_100000_105000"
+   }
+  ],
+  "has_more": false
+ },
+ "testnet": false
+}

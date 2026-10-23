@@ -99,14 +99,15 @@ class ContractStore:
     write = staticmethod(VenueStore.write)
 
     def merge(self, path: Path, new: pd.DataFrame, keys: Sequence[str],
-              sort: Sequence[str] = ()) -> int:
-        """Merge ``new`` into ``path`` on ``keys``, newer rows winning. Returns the row count."""
+              sort: Sequence[str] = (), *, keep: str = "last") -> int:
+        """Merge ``new`` into ``path`` on ``keys``, newer rows winning (``keep="first"``: stored rows win,
+        e.g. settlements keep their ``first_seen_at``). Returns the row count."""
         existing = self.read(path)
         frames = [f for f in (existing, new) if not f.empty]
         if not frames:
             return 0
         merged = pd.concat(frames, ignore_index=True) if len(frames) > 1 else frames[0].reset_index(drop=True)
-        merged = merged.drop_duplicates(list(keys), keep="last")
+        merged = merged.drop_duplicates(list(keys), keep=keep)
         if sort:
             merged = merged.sort_values(list(sort), kind="stable")
         self.write(path, merged.reset_index(drop=True))

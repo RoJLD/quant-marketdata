@@ -164,9 +164,21 @@ def parse_paradex(symbol: str) -> Optional[Parsed]:
     return {"base": base, "quote": "USD", "multiplier": multiplier, "asset_class": None}
 
 
+def parse_derive(symbol: str) -> Optional[Parsed]:
+    """Derive perps: ``<BASE>-PERP``, USDC-margined and quoted in USD (``perp_details.index`` is
+    ``<BASE>-USD``)."""
+    if not symbol.endswith("-PERP") or not symbol.isascii():
+        return None
+    base = symbol[: -len("-PERP")]
+    if not base.isalnum():
+        return None
+    return {"base": base, "quote": "USD", "multiplier": 1.0, "asset_class": "crypto"}
+
+
 PARSERS: Dict[str, Callable[[str], Optional[Parsed]]] = {
     "aster": parse_aster,
     "binance": parse_binance,
+    "derive": parse_derive,
     "extended": parse_extended,
     "hyperliquid": parse_hyperliquid,
     "lighter": parse_lighter,
@@ -299,6 +311,7 @@ __all__ = [
     "SESSION_TAGS",
     "parse_aster",
     "parse_binance",
+    "parse_derive",
     "parse_extended",
     "parse_hyperliquid",
     "parse_lighter",
