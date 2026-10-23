@@ -22,13 +22,14 @@ pass that saw the contract. ``universe_changes`` lists new underlyings, expiries
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Iterable, Optional, Tuple
 
 import pandas as pd
 
-from quant_marketdata.venues.contracts.indexes import venue_index_id
+from quant_marketdata.venues.contracts.indexes import settlement_index_info, venue_index_id
 from quant_marketdata.venues.contracts.overrides import (
     CRYPTO_BASES,
     KALSHI_SERIES,
@@ -38,6 +39,7 @@ from quant_marketdata.venues.contracts.schema import (
     BINARY_CONTRACT_COLUMNS,
     OPTION_CONTRACT_COLUMNS,
     OPTION_TYPES,
+    SETTLEMENT_COLUMNS,
     binary_condition,
     binary_contract_id,
     canonical_quote,
@@ -48,6 +50,8 @@ from quant_marketdata.venues.contracts.schema import (
 
 NameFields = Dict[str, object]  # {"base": str, "expiry_date": Timestamp (midnight), "strike": float, "option_type"}
 NameParser = Callable[[str], Optional[NameFields]]
+
+logger = logging.getLogger(__name__)
 
 _NAME_PARSERS: Dict[str, NameParser] = {}
 
@@ -283,8 +287,38 @@ def universe_changes(existing: pd.DataFrame, merged: pd.DataFrame, as_of: pd.Tim
     return pd.DataFrame(events, columns=columns)
 
 
+def binary_settlements(contracts: pd.DataFrame, *, source_endpoint: str,
+                       seen_at: Optional[pd.Timestamp] = None) -> pd.DataFrame:
+    """One ``Settlement`` row per settled binary event (resolved contracts): the index value its markets
+    settled on and their fixing method (``mixed`` if they disagree). An event whose markets disagree on the
+    value is skipped and logged."""
+    seen_at = pd.Timestamp.now(tz="UTC").tz_localize(None) if seen_at is None else pd.Timestamp(seen_at)
+    settled = contracts[contracts["settlement_value"].notna()] if not contracts.empty else contracts
+    rows = []
+    for (event, index_id), group in settled.groupby(["venue_event_id", "settlement_index_id"], sort=False):
+        values = group["settlement_value"].unique()
+        if len(values) != 1:
+            logger.warning("%s: markets disagree on the settlement value %s", event, sorted(values))
+            continue
+        methods = group["fixing_method"].dropna().unique()
+        rows.append({
+            "ts": group["expiry"].iloc[0],
+            "venue": group["venue"].iloc[0],
+            "settlement_index_id": index_id,
+            "settlement_price": float(values[0]),
+            "method": methods[0] if len(methods) == 1 else "mixed",
+            "method_source": settlement_index_info(index_id)["method_source"],
+            "source_endpoint": source_endpoint,
+            "venue_ref": event,
+            "first_seen_at": seen_at,
+        })
+    frame = frame_of(rows, SETTLEMENT_COLUMNS)
+    return frame.sort_values("ts").reset_index(drop=True) if not frame.empty else frame
+
+
 __all__ = [
     "ContractBuild",
+    "binary_settlements",
     "name_parser",
     "register_name_parser",
     "resolve_binary_contracts",

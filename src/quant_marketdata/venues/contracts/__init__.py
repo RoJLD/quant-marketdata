@@ -7,7 +7,10 @@
   ``resolve_binary_contracts``, ``update_contract_registry``), separate from the perp registry;
 - ``overrides``, ``indexes``, ``fees``: the explicit tables (underlying overrides, Kalshi series,
   settlement indexes and fixing methods, fee models);
-- ``store``: day/month partitions and append-only snapshots (``ContractStore``).
+- ``store``: day/month partitions and append-only snapshots (``ContractStore``);
+- ``readers``: ``load_chain``, ``load_ladder``, ``load_settlements``, ``settlement_comparison``.
+
+Recording: ``qmd-snapshot`` (one pass) and ``qmd-options-daily`` (``quant_marketdata.venues.snapshot``).
 
 Spec: Quant-lab ``docs/specs/2026-10-18-options-prediction-markets-design.md``. Data only: estimators
 (implied probabilities, distributions, hourly vol) live in Quant-lab.
@@ -26,8 +29,17 @@ from quant_marketdata.venues.contracts.overrides import (
     OPTION_UNDERLYINGS,
 )
 from quant_marketdata.venues.contracts.protocol import BinaryVenue, OptionsVenue
+from quant_marketdata.venues.contracts.readers import (
+    load_binary_registry,
+    load_chain,
+    load_ladder,
+    load_option_registry,
+    load_settlements,
+    settlement_comparison,
+)
 from quant_marketdata.venues.contracts.registry import (
     ContractBuild,
+    binary_settlements,
     register_name_parser,
     resolve_binary_contracts,
     resolve_option_contracts,
@@ -80,11 +92,17 @@ __all__ = [
     "SETTLEMENT_COLUMNS",
     "SETTLEMENT_INDEXES",
     "binary_condition",
+    "binary_settlements",
     "binary_contract_id",
     "canonical_quote",
     "format_strike",
     "frame_of",
     "kalshi_fee",
+    "load_binary_registry",
+    "load_chain",
+    "load_ladder",
+    "load_option_registry",
+    "load_settlements",
     "make_underlying_id",
     "option_contract_id",
     "outcome_from_bounds",
@@ -93,6 +111,7 @@ __all__ = [
     "register_name_parser",
     "resolve_binary_contracts",
     "resolve_option_contracts",
+    "settlement_comparison",
     "settlement_index_info",
     "universe_changes",
     "update_contract_registry",

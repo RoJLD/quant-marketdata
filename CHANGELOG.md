@@ -38,7 +38,7 @@ Quant-lab repo's `docs/PLATFORM.md`.
   history) and options on `OptionsVenue` (contracts from `get_all_instruments` structured fields, chains
   from `get_tickers` per expiry with the abbreviated keys mapped by an explicit table, greeks =
   undiscounted Black-76 on the forward, public trades without trader identifiers, settlement prices of the
-  last 12 expiries). Registry rule `<BASE>-PERP` and the XAUT gold-token override.
+  ~12 days of expiries). Registry rule `<BASE>-PERP` and the XAUT gold-token override.
 - **Deribit option chains** (`deribit`, `OptionsVenue` only) over the direct public API, not OpenBB:
   inverse BTC/ETH contracts (linear USDC options opt-in), chains from one book summary per currency with
   inverse prices converted to USD by the pass's index price and IV from percent to fraction (raw values
@@ -52,6 +52,14 @@ Quant-lab repo's `docs/PLATFORM.md`.
   live quotes without invented sides, per-event and per-market candles (1m/1h/1d) and trades from both
   data tiers (current and historical, split at `/historical/cutoff`) under one schema, the YES order book,
   settlements per event, and the quadratic fee formula (`contracts.fees.kalshi_fee`, `unconfirmed`).
+- **`qmd-snapshot`** (one scheduled pass: option chains of Derive and Deribit, Kalshi quotes, registry
+  updates, `universe_change` events, a heartbeat per venue; a failing venue does not stop the others) and
+  **`qmd-options-daily`** (registries with recent expiries, settlements -- Derive's ~12 days, Deribit's
+  deliveries since 2016, Kalshi events of the last days --, settlement prices filled into expired
+  contracts, Kalshi 1-minute candles, incremental option trades). Option and binary venues are discovered
+  by capability, so Paradex options join without changing the command.
+- Readers `load_chain`, `load_ladder`, `load_settlements`, `load_option_registry`, `load_binary_registry`
+  and `settlement_comparison` (the daily index gap at the common 08:00 UTC fixing, in basis points).
 - `download_venue` only lists perp instruments for a venue that declares `Dataset.INSTRUMENTS`.
 - `Dataset` members for dated contracts (`OPTION_CONTRACTS`, `OPTION_CHAIN`, ..., `SETTLEMENTS`) and
   `PERP_DATASETS` / `CONTRACT_DATASETS`; Lighter now declares `PERP_DATASETS` instead of every dataset.

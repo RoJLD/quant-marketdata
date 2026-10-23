@@ -54,6 +54,7 @@ Quant-lab spec `2026-10-15-multi-venue-data-layer-design.md`):
 | `extended` | `BTC-USD` | 1h | funding, candles, mark candles, specs |
 | `aster` | `BTCUSDT` | per symbol, 8h/4h/2h/1h | funding, candles, mark candles, specs |
 | `paradex` (perps) | `BTC-USD-PERP`, `kPEPE-USD-PERP` | continuous; hourly events from the funding index | funding (from 2024-03-12), candles (1m-1h), mark candles, specs |
+| `derive` (perps + options) | `BTC-PERP` | continuous; hourly rate, ~12 days of history | funding, specs; options (see below) |
 
 Each adapter's module docstring lists the API quirks it absorbs. Paradex accrues funding continuously:
 its funding index is sampled at every whole hour and each hour becomes one settlement-equivalent event,
@@ -84,6 +85,78 @@ btc = load_funding("BTC-USD-PERP")        # every venue's funding events, with a
 ```
 
 Live API tests are opt-in: `pytest -m live`.
+
+### Dated contracts: options and prediction markets (`quant_marketdata.venues.contracts`)
+
+Options and binary contracts have a life cycle (listing, expiry, settlement), structured attributes and
+volumes that a one-file-per-symbol perp layout cannot hold (Kalshi KXBTCD alone creates ~4,500 markets a
+day). They get their own schemas, registry and partitioned store (Quant-lab spec
+`2026-10-18-options-prediction-markets-design.md`). Data only: implied probabilities, distributions and
+hourly vol are estimated in Quant-lab.
+
+| Venue | Protocol | Contracts | Live (snapshot) | History |
+|---|---|---|---|---|
+| `derive` | `OptionsVenue` (+ perps) | `get_all_instruments`, ~11 days of expiries | chains per expiry, venue greeks (undiscounted Black-76 on the forward) | trades since 2024-01 (no trader ids); settlements of about two weeks of expiries |
+| `deribit` | `OptionsVenue` | inverse BTC/ETH (linear USDC opt-in) | one book summary per currency: USD prices via the pass's index, IV / 100, no greeks | deliveries since 2016; archive trades with IV |
+| `kalshi` | `BinaryVenue` | KXBTCD, KXBTC, KXETHD, KXETH (series table only) | quotes of open markets, YES book | markets, outcomes, 1m/1h/1d candles and trades from both data tiers |
+
+Paradex options join the same schemas in the Paradex adapter (they are discovered by capability).
+
+- **Canonical ids** (the settlement index is never part of an id): options
+  `BTC-USD-20261023T0800-82000-C` (strike in minimal decimals), binaries `BTC-USD-20261018T1000-GE81500`
+  (`GE<k>`, `LT<k>`, `IN<lo>_<hi>`, bounds `k_low <= S_T < k_high`).
+- **Canonical units**: option prices in USD per unit of underlying (Deribit's BTC prices x the index of
+  the same pass, raw kept), IV as a fraction, `delta`/`gamma` per unit of the declared
+  `greeks_reference`, vega per vol point, theta per calendar day; binary quotes as YES probabilities with
+  `p_mid` NaN when a side is missing. `settlement_price` / `settlement_value` = the index value at the
+  fixing, never a payoff.
+- **Nothing read from names**: underlyings come from structured fields, an explicit override
+  (`contracts/overrides.py`) or the crypto-ticker rule; names are only cross-checked (a mismatch is
+  reported `unresolved`). Kalshi tickers (New York time) are never parsed: the expiry is the event's
+  `strike_date`, the underlying and index come from the series table.
+- **Settlement indexes** (`contracts/indexes.py`): `cfb:BRTI`/`cfb:ERTI` (Kalshi; fixing method read per
+  market: 2025 trimmed mean, 2026 simple 60 s mean), `deribit:btc_usd` (30-min TWAP, venue doc),
+  `paradex:<BASE>` (30-min TWAP of the spot oracle, venue doc), `derive:BTC-USD` (unknown). Index gaps are
+  columns, never corrected: `settlement_comparison(load_settlements())` lines up each fixing with the gap in
+  basis points (2026-10-18 08:00 UTC: Deribit +1.8 bp, Derive +2.2 bp over Kalshi's BRTI fixing).
+- **Fees** (`contracts/fees.py`): raw venue rates in the registry, the composition rule declared per
+  venue with `fee_model_status` (`unconfirmed` for Derive, Deribit and Kalshi's quadratic formula until
+  the published schedules are read).
+- **Registry** (`registry/options/<venue>.parquet`, `registry/binaries/<venue>/<SERIES>/<YYYY-MM>.parquet`):
+  point-in-time; a contract missing before its expiry is `delisted`, after it `expired`, then completed
+  with its settlement (`settlement_seen_at`); nothing is deleted; `first_seen_at` is the first pass that
+  saw it; `universe_change` events (new underlying, expiry, series) in `registry/universe_changes/`.
+- **Store**: chains and quotes are append-only snapshot parts (`venues/<venue>/option_chain/<UNDERLYING>/
+  <day>.parts/`) compacted into daily files; trades and candles in monthly partitions; settlements per index.
+
+```bash
+qmd-snapshot                 # one pass: BTC/ETH chains (Derive, Deribit) + Kalshi quotes, ~25 s, ~0.7 MB
+qmd-options-daily            # before 08:00 UTC: recent expiries, settlements, Kalshi candles, trades
+```
+
+Schedule `qmd-snapshot` every 15 minutes (:00, :15, :30, :45) plus once at 07:58 UTC, and
+`qmd-options-daily` once a day before 08:00 UTC (each run exits; a failing venue does not stop the others;
+`venues/<venue>/_snapshot_health.json` is the heartbeat). Derive keeps ~11 days of expired contracts and ~12
+days of settlement prices, Paradex no quotes nor candles after expiry: a day not recorded is lost.
+
+```python
+from quant_marketdata.venues.contracts import load_chain, load_ladder, load_settlements, settlement_comparison
+chain = load_chain("BTC-USD")                                  # last snapshot per venue + registry columns
+ladder = load_ladder("KXBTCD", "KXBTCD-26OCT1904", at="2026-10-19 07:30")
+gaps = settlement_comparison(load_settlements())               # one row per fixing, gap_bp:<index>
+```
+
+Decisions kept from the spec's open questions (validated 2026-10-18 with their defaults):
+
+1. Cadence and universe: BTC and ETH every 15 minutes plus 07:58 UTC; widen after a week of disk use.
+2. Host: a missed pass is not backfilled (Derive and Paradex quotes are live-only).
+3. Paradex settlement: answered since (30-min TWAP of the spot oracle, served after expiry): `twap_30min`.
+4. Derive: index settlement method `unknown`; abbreviated ticker keys mapped by a tested table (deduced from
+   values); fee composition `unconfirmed`.
+5. Kalshi fees: quadratic formula with an `unconfirmed` coefficient; data use only.
+6. Deribit: delivery = 30-min TWAP per the venue docs (to reconfirm); inverse BTC/ETH chains only.
+7. F4 estimator and caps belong to the scanner's YAML; the 07:15-07:58 passes are kept.
+8. Lighter binaries: semantics not assumed; nothing recorded until `/events` is live on mainnet.
 
 ### Live streams (`quant_marketdata.venues.stream`)
 
