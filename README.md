@@ -130,7 +130,7 @@ Paradex options join the same schemas in the Paradex adapter (they are discovere
   <day>.parts/`) compacted into daily files; trades and candles in monthly partitions; settlements per index.
 
 ```bash
-qmd-snapshot                 # one pass: BTC/ETH chains (Derive, Deribit) + Kalshi quotes, ~25 s, ~0.7 MB
+qmd-snapshot                 # one pass: BTC/ETH chains (Derive, Deribit, Paradex) + Kalshi quotes
 qmd-options-daily            # before 08:00 UTC: recent expiries, settlements, Kalshi candles, trades
 ```
 
@@ -188,10 +188,14 @@ from quant_marketdata.venues.contracts import ContractStore
 from quant_marketdata.venues.paradex_snapshot import download_mark_candles, settle_expired, snapshot_pass
 
 venue, store = get_venue("paradex", rate=20), ContractStore.at()   # same root as the perps store
-snapshot_pass(venue, store, underlyings=("BTC", "ETH"))   # every 15 min: registry + chain snapshots
+snapshot_pass(venue, store, underlyings=("BTC", "ETH"))   # Paradex alone: registry + chain snapshots
 settle_expired(venue, store)                              # daily: fixings (30-min TWAP of the spot oracle)
 download_mark_candles(venue, store, "BTC")                # daily: mark candles of the live contracts
 ```
+
+`qmd-snapshot` and `qmd-options-daily` already find Paradex by capability: do not schedule `snapshot_pass`
+next to them (every chain would be recorded twice). `download_mark_candles` is not yet called by
+`qmd-options-daily`.
 
 ## Scope
 
