@@ -54,7 +54,7 @@ import json
 import math
 import re
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import pandas as pd
 
@@ -130,8 +130,11 @@ class DeriveVenue:
                               Dataset.OPTION_CHAIN, Dataset.OPTION_TRADES, Dataset.SETTLEMENTS})
     resolutions: tuple = ()  # no candle endpoint in v3
 
-    def __init__(self, client: Optional[JsonClient] = None, *, rate: float = 2.0) -> None:
+    def __init__(self, client: Optional[JsonClient] = None, *, rate: float = 2.0,
+                 clock: Optional[Callable[[], pd.Timestamp]] = None) -> None:
         self.client = client or JsonClient(BASE_URL, rate=rate)
+        # Contract statuses depend on the time of the listing (expired after the expiry); injectable.
+        self.clock = clock or (lambda: pd.Timestamp.now(tz="UTC").tz_localize(None))
 
     def _call(self, method: str, payload: Optional[Dict[str, Any]] = None) -> Any:
         return _check(self.client.post(method, payload or {}))
@@ -174,8 +177,7 @@ class DeriveVenue:
             "instrument_name": symbol, "start_timestamp": _ms(pd.Timestamp(start) - HOUR),
             "end_timestamp": _ms(end), "period": 3600,
         })
-        now = pd.Timestamp.now(tz="UTC").tz_localize(None)
-        raw = parse_funding(result.get("funding_rate_history") or [], complete_before=now)
+        raw = parse_funding(result.get("funding_rate_history") or [], complete_before=self.clock())
         if raw.empty:
             return empty_frame(FUNDING_COLUMNS)
         out = finalize_funding(raw, FUNDING_INTERVAL_H)
@@ -201,7 +203,7 @@ class DeriveVenue:
         require(self, Dataset.OPTION_CONTRACTS)
         currencies = [underlying] if underlying else self.option_currencies()
         records = [r for c in currencies for r in self._instruments("option", c, expired)]
-        return parse_option_instruments(records)
+        return parse_option_instruments(records, now=self.clock())
 
     def option_chain(self, underlying: str, expiry: Optional[datetime] = None) -> pd.DataFrame:
         require(self, Dataset.OPTION_CHAIN)

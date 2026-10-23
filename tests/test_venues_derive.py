@@ -183,7 +183,7 @@ def test_funding_events_close_their_hour():
 
 
 def test_registered_capabilities_and_protocols():
-    venue = get_venue("derive", client=FakeClient())
+    venue = get_venue("derive", client=FakeClient(), clock=lambda: NOW)
     assert isinstance(venue, DeriveVenue) and isinstance(venue, OptionsVenue)
     assert Dataset.OPTION_CHAIN in venue.capabilities and Dataset.CANDLES not in venue.capabilities
     with pytest.raises(UnsupportedDataset):
@@ -194,7 +194,7 @@ def test_registered_capabilities_and_protocols():
 
 def test_adapter_chain_is_one_request_per_active_expiry():
     client = FakeClient()
-    venue = DeriveVenue(client)
+    venue = DeriveVenue(client, clock=lambda: NOW)
     chain = venue.option_chain("BTC")
     tickers = [p for m, p in client.calls if m == "get_tickers"]
     # Active BTC expiries of the fixture: 2026-10-23 (the 2027 contract is only scheduled).
@@ -204,7 +204,7 @@ def test_adapter_chain_is_one_request_per_active_expiry():
 
 def test_adapter_contracts_funding_trades_settlements():
     client = FakeClient()
-    venue = DeriveVenue(client)
+    venue = DeriveVenue(client, clock=lambda: NOW)
     contracts = venue.option_contracts()
     assert set(contracts["venue_base"]) == {"BTC"}  # currencies with option markets only
     listing = [p for m, p in client.calls if m == "get_all_instruments"]
