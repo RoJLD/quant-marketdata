@@ -36,6 +36,7 @@ class Dataset(str, Enum):
     SPECS = "specs"
     BOOK = "book"  # live order book snapshot (not stored: the stream recorder keeps the history)
     OPEN_INTEREST = "open_interest"  # live open-interest snapshot (not stored: consumers journal it)
+    PRICES = "prices"  # live mark / index / last price snapshot (not stored: consumers journal it)
     # Dated contracts (options and binaries): ``quant_marketdata.venues.contracts``.
     OPTION_CONTRACTS = "option_contracts"
     OPTION_CHAIN = "option_chain"
@@ -49,7 +50,8 @@ class Dataset(str, Enum):
 
 
 PERP_DATASETS = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
-                           Dataset.DAILY_METRICS, Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST})
+                           Dataset.DAILY_METRICS, Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST,
+                           Dataset.PRICES})
 CONTRACT_DATASETS = frozenset(Dataset) - PERP_DATASETS
 
 ASSET_CLASSES = frozenset({"crypto", "equity", "etf", "index", "rates", "commodity", "fx", "private"})
@@ -90,6 +92,8 @@ DAILY_METRICS_COLUMNS = ["open_interest_usd", "volume_usd", "oi_convention"]
 OPEN_INTEREST_COLUMNS = ["symbol", "open_interest_base", "price", "open_interest_usd", "price_kind",
                          "oi_convention", "ts", "error"]
 OI_CONVENTIONS = frozenset({"one_side", "both_sides"})
+
+PRICES_COLUMNS = ["symbol", "mark_price", "index_price", "last_price", "index_kind", "ts", "error"]
 
 
 def make_book(bids, asks, *, venue: str, symbol: str, ts=None, depth: int | None = None) -> dict:
@@ -135,6 +139,31 @@ def make_open_interest(records: dict, symbols=None, *, ts=None) -> pd.DataFrame:
                      "ts": pd.Timestamp(record["ts"]) if record.get("ts") is not None else stamp,
                      "error": record.get("error")})
     return pd.DataFrame(rows, columns=OPEN_INTEREST_COLUMNS)
+
+
+def make_prices(records: dict, symbols=None, *, ts=None) -> pd.DataFrame:
+    """Live price snapshot, ``PRICES_COLUMNS``, one row per symbol: the venue's mark price, its index (what its
+    funding premium is measured against: ``index_kind`` says what the venue calls it -- index, oracle,
+    underlying) and the last trade price, NaN where not served. ``records``: {native symbol: {"mark_price",
+    "index_price", "last_price", "index_kind"} plus optionally "ts" and "error"}; a requested symbol without a
+    record is a row with ``error = "unknown symbol"``."""
+    stamp = pd.Timestamp.now(tz="UTC").tz_localize(None) if ts is None else pd.Timestamp(ts)
+
+    def num(value) -> float:
+        try:
+            return float(value) if value is not None and value != "" else float("nan")
+        except (TypeError, ValueError):
+            return float("nan")
+
+    rows = []
+    for symbol in (sorted(records) if symbols is None else list(dict.fromkeys(symbols))):
+        record = records.get(symbol) or {"error": "unknown symbol"}
+        rows.append({"symbol": symbol, "mark_price": num(record.get("mark_price")),
+                     "index_price": num(record.get("index_price")), "last_price": num(record.get("last_price")),
+                     "index_kind": record.get("index_kind"),
+                     "ts": pd.Timestamp(record["ts"]) if record.get("ts") is not None else stamp,
+                     "error": record.get("error")})
+    return pd.DataFrame(rows, columns=PRICES_COLUMNS)
 
 
 def one_side_usd(snapshot: pd.DataFrame) -> pd.Series:
@@ -209,6 +238,7 @@ __all__ = [
     "OI_CONVENTIONS",
     "OPEN_INTEREST_COLUMNS",
     "PERP_DATASETS",
+    "PRICES_COLUMNS",
     "SESSIONS",
     "UnsupportedDataset",
     "empty_frame",
@@ -216,5 +246,6 @@ __all__ = [
     "funding_grid",
     "make_book",
     "make_open_interest",
+    "make_prices",
     "one_side_usd",
 ]

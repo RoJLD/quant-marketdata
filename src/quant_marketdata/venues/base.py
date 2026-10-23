@@ -43,6 +43,10 @@ class Venue(Protocol):
         (default: every perp; per-symbol venues then make one request per symbol), with the venue's
         ``oi_convention``."""
 
+    def prices(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live mark / index / last prices, ``PRICES_COLUMNS`` (``schema.make_prices``), one row per symbol
+        (default: every perp), one request per venue."""
+
     def specs(self) -> pd.DataFrame:
         """Current specs of every instrument (fees, margins, sizes, status), one row per instrument."""
 

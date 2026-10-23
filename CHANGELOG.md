@@ -24,6 +24,10 @@ Changed): consumers keyed on `instrument_id` map the Extended stock perps when t
   `markets/summary.open_interest` counts both sides (= `open_interest_long + open_interest_short`);
   Hyperliquid (`metaAndAssetCtxs`), Binance and Aster (`openInterest`, one request per symbol, mark price
   from `premiumIndex`) and Extended (`marketStats`, USD as published) count one side.
+- **`Dataset.PRICES`**: `Venue.prices(symbols=None)`, a live snapshot of every perp's mark price, the index
+  its funding premium is measured against (`index_kind`: Lighter, Binance, Aster, Extended `index`;
+  Hyperliquid `oracle`; Paradex `underlying`) and the last trade (Hyperliquid: mid; Binance/Aster: none),
+  one request per venue (`PRICES_COLUMNS`, `make_prices`). For the basis scan of Quant-lab (F2).
 - **Paradex adapter** (`paradex`, perps only) over the public REST API (no SDK): instruments, funding,
   last/mark candles (1m-1h), specs, order book. Paradex funding is continuous; each whole hour becomes a
   settlement-equivalent event `rate = (index_h - index_{h-1}) / price` from the funding index (the

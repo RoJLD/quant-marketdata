@@ -43,6 +43,7 @@ from quant_marketdata.venues.schema import (
     finalize_funding,
     make_book,
     make_open_interest,
+    make_prices,
 )
 
 BASE_URL = "https://mainnet.zklighter.elliot.ai/api/v1"
@@ -209,6 +210,13 @@ class LighterVenue:
         valued at the mark price."""
         require(self, Dataset.OPEN_INTEREST)
         return make_open_interest({m["symbol"]: parse_open_interest(m) for m in self._markets()}, symbols)
+
+    def prices(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live mark, index and last prices of every perp from ``orderBookDetails`` (one request)."""
+        require(self, Dataset.PRICES)
+        return make_prices({m["symbol"]: {"mark_price": m.get("mark_price"), "index_price": m.get("index_price"),
+                                          "last_price": m.get("last_trade_price"), "index_kind": "index"}
+                            for m in self._markets()}, symbols)
 
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         require(self, Dataset.DAILY_METRICS)

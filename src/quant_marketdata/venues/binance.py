@@ -42,6 +42,7 @@ from quant_marketdata.venues.schema import (
     finalize_funding,
     make_book,
     make_open_interest,
+    make_prices,
 )
 
 BASE_URL = "https://fapi.binance.com/fapi/v1"
@@ -91,7 +92,7 @@ DEPTH_LIMITS = (5, 10, 20, 50, 100, 500, 1000)
 class BinanceVenue:
     name = "binance"
     capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
-                              Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST})
+                              Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST, Dataset.PRICES})
     resolutions = tuple(RESOLUTION_SECONDS)
     base_url = BASE_URL
     max_rate: Optional[float] = MAX_RATE
@@ -226,6 +227,17 @@ class BinanceVenue:
                 continue
             records[symbol] = parse_open_interest(payload, marks.get(symbol))
         return make_open_interest(records, list(records))
+
+    def prices(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live mark and index prices of every symbol from ``premiumIndex`` (one request; no last price)."""
+        require(self, Dataset.PRICES)
+        records = {}
+        for p in self.client.get("premiumIndex") or []:
+            stamp = p.get("time")
+            records[p["symbol"]] = {"mark_price": p.get("markPrice"), "index_price": p.get("indexPrice"),
+                                    "index_kind": "index",
+                                    "ts": pd.Timestamp(int(stamp), unit="ms") if stamp else None}
+        return make_prices(records, symbols)
 
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         # openInterestHist only reaches 30 days back: no history worth storing.

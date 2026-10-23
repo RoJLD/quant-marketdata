@@ -65,6 +65,7 @@ from quant_marketdata.venues.schema import (
     empty_frame,
     make_book,
     make_open_interest,
+    make_prices,
 )
 
 BASE_URL = "https://api.prod.paradex.trade/v1"
@@ -95,7 +96,8 @@ def asset_class(market: Dict[str, Any]) -> Optional[str]:
 class ParadexVenue(ParadexOptions):
     name = "paradex"
     capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
-                              Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST}) | OPTION_DATASETS
+                              Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST, Dataset.PRICES}) \
+        | OPTION_DATASETS
     resolutions = tuple(RESOLUTION_MINUTES)
 
     def __init__(self, client: Optional[JsonClient] = None, *, rate: float = 2.0,
@@ -201,6 +203,19 @@ class ParadexVenue(ParadexOptions):
         require(self, Dataset.OPEN_INTEREST)
         summary = self.client.get("markets/summary", {"market": "ALL"}).get("results") or []
         return make_open_interest(parse_summaries(summary), symbols)
+
+    def prices(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live mark, underlying (spot index) and last prices of every perp from ``markets/summary`` (one
+        request)."""
+        require(self, Dataset.PRICES)
+        records = {}
+        for r in self.client.get("markets/summary", {"market": "ALL"}).get("results") or []:
+            if str(r.get("symbol", "")).endswith("-PERP"):
+                records[r["symbol"]] = {
+                    "mark_price": r.get("mark_price"), "index_price": r.get("underlying_price"),
+                    "last_price": r.get("last_traded_price"), "index_kind": "underlying",
+                    "ts": pd.Timestamp(int(r["created_at"]), unit="ms") if r.get("created_at") else None}
+        return make_prices(records, symbols)
 
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         require(self, Dataset.DAILY_METRICS)  # no open-interest history in the public API

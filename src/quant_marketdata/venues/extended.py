@@ -41,6 +41,7 @@ from quant_marketdata.venues.schema import (
     finalize_funding,
     make_book,
     make_open_interest,
+    make_prices,
 )
 
 BASE_URL = "https://api.starknet.extended.exchange/api/v1"
@@ -110,7 +111,7 @@ def asset_class(market: Dict[str, Any]) -> Optional[str]:
 class ExtendedVenue:
     name = "extended"
     capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
-                              Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST})
+                              Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST, Dataset.PRICES})
     resolutions = tuple(RESOLUTIONS)
 
     def __init__(self, client: Optional[JsonClient] = None, *, rate: float = 2.0) -> None:
@@ -206,6 +207,16 @@ class ExtendedVenue:
         require(self, Dataset.OPEN_INTEREST)
         return make_open_interest({m["name"]: parse_market_stats(m.get("marketStats") or {})
                                    for m in self._markets()}, symbols)
+
+    def prices(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live mark, index and last prices of every perp from the ``marketStats`` of ``info/markets``."""
+        require(self, Dataset.PRICES)
+        records = {}
+        for m in self._markets():
+            stats = m.get("marketStats") or {}
+            records[m["name"]] = {"mark_price": stats.get("markPrice"), "index_price": stats.get("indexPrice"),
+                                  "last_price": stats.get("lastPrice"), "index_kind": "index"}
+        return make_prices(records, symbols)
 
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         require(self, Dataset.DAILY_METRICS)  # no open-interest history in the public API
