@@ -1,0 +1,87 @@
+{
+ "id": "fixture",
+ "result": {
+  "funding_rate_history": [
+   {
+    "timestamp": 1791331200000,
+    "risk_universe_id": 1,
+    "currency": "BTC",
+    "open": "0.000012500",
+    "high": "0.000012500",
+    "low": "0.000012500",
+    "close": "0.000012500",
+    "funding_rate": "0.000012500"
+   },
+   {
+    "timestamp": 1791334800000,
+    "risk_universe_id": 1,
+    "currency": "BTC",
+    "open": "0.000012500",
+    "high": "0.000012500",
+    "low": "0.000012500",
+    "close": "0.000012500",
+    "funding_rate": "0.000012500"
+   },
+   {
+    "timestamp": 1791338400000,
+    "risk_universe_id": 1,
+    "currency": "BTC",
+    "open": "0.000012500",
+    "high": "0.000027537",
+    "low": "0.000012500",
+    "close": "0.000022634",
+    "funding_rate": "0.000022634"
+   },
+   {
+    "timestamp": 1791342000000,
+    "risk_universe_id": 1,
+    "currency": "BTC",
+    "open": "0.000020922",
+    "high": "0.000020922",
+    "low": "0.000012500",
+    "close": "0.000012500",
+    "funding_rate": "0.000012500"
+   },
+   {
+    "timestamp": 1791345600000,
+    "risk_universe_id": 1,
+    "currency": "BTC",
+    "open": "0.000012500",
+    "high": "0.000012500",
+    "low": "0.000012500",
+    "close": "0.000012500",
+    "funding_rate": "0.000012500"
+   },
+   {
+    "timestamp": 1791349200000,
+    "risk_universe_id": 1,
+    "currency": "BTC",
+    "open": "0.000012500",
+    "high": "0.000012500",
+    "low": "0.000012500",
+    "close": "0.000012500",
+    "funding_rate": "0.000012500"
+   },
+   {
+    "timestamp": 1792332000000,
+    "risk_universe_id": 1,
+    "currency": "BTC",
+    "open": "0.000003072",
+    "high": "0.000012500",
+    "low": "0.000003072",
+    "close": "0.000004497",
+    "funding_rate": "0.000004497"
+   },
+   {
+    "timestamp": 1792335600000,
+    "risk_universe_id": 1,
+    "currency": "BTC",
+    "open": "0.000004497",
+    "high": "0.000004497",
+    "low": "0.000001517",
+    "close": "0.000004242",
+    "funding_rate": "0.000004242"
+   }
+  ]
+ }
+}

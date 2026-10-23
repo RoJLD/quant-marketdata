@@ -1,0 +1,67 @@
+{
+ "id": "3b8196e5-df95-4362-a4a0-dce70dcb549b",
+ "result": {
+  "expiries": [
+   {
+    "expiry_date": "20261007",
+    "price": "84210.189708710105",
+    "utc_expiry_sec": 1791360000
+   },
+   {
+    "expiry_date": "20261008",
+    "price": "83041.335530103457",
+    "utc_expiry_sec": 1791446400
+   },
+   {
+    "expiry_date": "20261009",
+    "price": "82488.989157019273",
+    "utc_expiry_sec": 1791532800
+   },
+   {
+    "expiry_date": "20261010",
+    "price": "82671.726325666092",
+    "utc_expiry_sec": 1791619200
+   },
+   {
+    "expiry_date": "20261011",
+    "price": "82949.848151415895",
+    "utc_expiry_sec": 1791705600
+   },
+   {
+    "expiry_date": "20261012",
+    "price": "83913.315509397762",
+    "utc_expiry_sec": 1791792000
+   },
+   {
+    "expiry_date": "20261013",
+    "price": "83781.107218437647",
+    "utc_expiry_sec": 1791878400
+   },
+   {
+    "expiry_date": "20261014",
+    "price": "83395.128941597961",
+    "utc_expiry_sec": 1791964800
+   },
+   {
+    "expiry_date": "20261015",
+    "price": "81233.375916861658",
+    "utc_expiry_sec": 1792051200
+   },
+   {
+    "expiry_date": "20261016",
+    "price": "82113.222893288022",
+    "utc_expiry_sec": 1792137600
+   },
+   {
+    "expiry_date": "20261017",
+    "price": "81594.436387304401",
+    "utc_expiry_sec": 1792224000
+   },
+   {
+    "expiry_date": "20261018",
+    "price": "81585.941225826275",
+    "utc_expiry_sec": 1792310400
+   }
+  ]
+ }
+}
