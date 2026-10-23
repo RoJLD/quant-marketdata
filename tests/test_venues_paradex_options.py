@@ -320,7 +320,10 @@ def test_a_pass_fetches_the_listing_and_the_summary_once():
     assert paths.count("markets") == 2 and paths.count("markets/summary") == 2
 
 
-def test_chain_refreshes_the_listing_once_on_an_unknown_symbol():
+def test_chain_refreshes_the_listing_once_on_an_unknown_symbol(monkeypatch):
+    # A frozen clock: the forced refresh must not depend on two readings differing (it did, and the test
+    # failed about once in eight runs on Windows, whose clock often reads the same twice).
+    monkeypatch.setattr("quant_marketdata.venues.paradex_options._now", lambda: pd.Timestamp("2026-10-18 13:00"))
     client = FakeParadexOptions()
     venue = ParadexVenue(client)
     venue.option_contracts()
