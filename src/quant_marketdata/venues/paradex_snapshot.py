@@ -17,6 +17,12 @@ lives, and an expired contract's fixing can only be asked for by name. Three pas
 
 Each step of a pass is independent: a failure is reported in the returned summary (and the heartbeat), the
 other steps still run.
+
+``qmd-snapshot`` and ``qmd-options-daily`` (``venues.snapshot``) find Paradex by capability and already do the
+listing, chain and fixing steps: do **not** schedule ``snapshot_pass`` next to ``qmd-snapshot`` (every chain
+would be recorded twice). These functions are for running Paradex alone; ``settle_expired`` (fixings of
+registry names older than ``markets/history`` reaches) and ``download_mark_candles`` cover what the daily task
+does not.
 """
 
 from __future__ import annotations
