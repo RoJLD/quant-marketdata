@@ -377,9 +377,12 @@ class ParadexOptions:
     _summary: Optional[List[Mapping[str, Any]]] = None
     _summary_at: Optional[pd.Timestamp] = None
 
-    def _fetch_listing(self, max_age: pd.Timedelta) -> pd.DataFrame:
+    def _fetch_listing(self, max_age: Optional[pd.Timedelta]) -> pd.DataFrame:
+        """The listing, fetched again when older than ``max_age``; ``None`` always fetches (an age of 0
+        would not: two clock readings can be equal, and the age must then exceed 0)."""
         now = _now()
-        if self._listing is None or self._listing_at is None or now - self._listing_at > max_age:
+        if (max_age is None or self._listing is None or self._listing_at is None
+                or now - self._listing_at > max_age):
             self._listing = parse_option_markets(self.client.get("markets").get("results") or [], now)
             self._listing_at, self._resolved = now, None
         return self._listing
@@ -402,7 +405,7 @@ class ParadexOptions:
         """Resolved live contracts, cached; the listing is fetched again when a symbol is unknown (strikes
         are listed every 8 hours)."""
         if self._listing is None or not set(symbols) <= set(self._listing["venue_symbol"]):
-            self._fetch_listing(pd.Timedelta(0))
+            self._fetch_listing(None)
         if self._resolved is None:
             build = resolve_option_contracts(VENUE, self._listing)
             self._resolved = (build.contracts if not build.contracts.empty
