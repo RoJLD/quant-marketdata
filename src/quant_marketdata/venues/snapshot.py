@@ -55,6 +55,7 @@ DEFAULT_UNDERLYINGS = ("BTC", "ETH")
 DEFAULT_SERIES = ("KXBTCD", "KXBTC", "KXETHD", "KXETH")
 DEFAULT_SINCE_DAYS = 2
 SETTLEMENT_KEYS = ["ts", "settlement_index_id"]
+CANDLE_BATCH_EVENTS = 24  # Kalshi events fetched between two writes of a monthly candle file
 
 
 @dataclass
@@ -326,17 +327,29 @@ def daily_binaries(store: ContractStore, venue, series_list: Sequence[str], as_o
         contracts: pd.DataFrame = state["contracts"]
         if contracts.empty:
             continue
+        pending: List[pd.DataFrame] = []
+
+        def write_job(s=series, pending=pending) -> StepResult:
+            # One merge per batch of events: a monthly file is rewritten once, not once per event.
+            frame = pd.concat(pending, ignore_index=True)
+            pending.clear()
+            store.merge_monthly(venue.name, Dataset.BINARY_CANDLES, s, frame, ["venue_symbol", "ts"],
+                                resolution="1m")
+            return StepResult(venue.name, "binary_candles_write", s, len(frame))
+
         for event, group in contracts.groupby("venue_event_id", sort=True):
-            def candles_job(e=event, g=group, s=series) -> StepResult:
-                start = g["trading_open"].min()
-                end = g["expiry"].max()
-                frame = venue.binary_candles(e, "1m", start, end, series=s)
+            def candles_job(e=event, g=group, s=series, pending=pending) -> StepResult:
+                frame = venue.binary_candles(e, "1m", g["trading_open"].min(), g["expiry"].max(), series=s)
                 frame["contract_id"] = frame["venue_symbol"].map(_ids(g))
-                store.merge_monthly(venue.name, Dataset.BINARY_CANDLES, s, frame, ["venue_symbol", "ts"],
-                                    resolution="1m")
+                if not frame.empty:
+                    pending.append(frame)
                 return StepResult(venue.name, "binary_candles", e, len(frame))
 
             _run(run, "binary_candles", event, candles_job)
+            if len(pending) >= CANDLE_BATCH_EVENTS:
+                _run(run, "binary_candles_write", series, write_job)
+        if pending:
+            _run(run, "binary_candles_write", series, write_job)
 
 
 def daily_task(*, root=None, venues: Optional[Sequence[str]] = None,
