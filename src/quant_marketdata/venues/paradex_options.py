@@ -44,7 +44,8 @@ Conventions (docs ``trading/dated-options/*`` and probes of 2026-10-18; every re
 - **Fees** (``fee_config``): ``interactive_fee`` (UI orders) 0, ``api_fee`` and ``rpi_fee`` maker and
   taker 0.0001, each with ``fee_cap`` 0.125 and ``fee_floor`` -0.125. The docs cap fees at 12.5 % of the
   premium but do not say what the rate applies to; a cap at 12.5 % of the premium only binds if the rate
-  applies to the underlying's notional (size x spot): ``FEE_MODEL`` is ``unconfirmed``.
+  applies to the underlying's notional (size x spot): ``contracts.fees.FEE_MODELS['paradex']`` is
+  ``unconfirmed``.
 - **Trades** (``trades?base_asset=<BASE>``, every option of a base, expired ones included, newest first,
   cursor-paged, at most 1,000 a page): ``side`` is the taker's, ``trade_type`` in {FILL, BLOCK_TRADE,
   LIQUIDATION, RPI, UNWIND_TRANSFER, SETTLE_MARKET}; no IV or mark at the trade. Most option volume is block
@@ -65,7 +66,6 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional
 import pandas as pd
 
 from quant_marketdata.venues.base import require
-from quant_marketdata.venues.contracts.fees import FEE_MODELS
 from quant_marketdata.venues.contracts.indexes import settlement_index_info, venue_index_id
 from quant_marketdata.venues.contracts.registry import (
     register_name_parser,
@@ -90,13 +90,6 @@ YEAR_DAYS = 365.0
 TRADE_PAGE = 1000  # the API's maximum page_size for trades
 OPTION_DATASETS = frozenset({Dataset.OPTION_CONTRACTS, Dataset.OPTION_CHAIN, Dataset.OPTION_TRADES,
                              Dataset.OPTION_MARK_CANDLES, Dataset.SETTLEMENTS})
-FEE_MODEL = {
-    "fee_model": "min(rate x size x spot, 0.125 x premium), rebates floored at -0.125 x premium; "
-                 "api_fee (0.0001) for API orders, interactive_fee (0) for UI orders",
-    "fee_model_status": "unconfirmed",
-    "note": "fee_config served per market; the docs (trading/trading-fees) document the 12.5 % premium cap "
-            "but not the base of the rate (size x spot inferred: the cap would never bind on the premium)",
-}
 STYLE, EXERCISE = "european", "cash"
 OPTION_TYPES = {"CALL": "C", "PUT": "P"}
 MONTHS = {m: i for i, m in enumerate(
@@ -118,9 +111,9 @@ def parse_option_name(symbol: str) -> Optional[Dict[str, Any]]:
             "strike": float(match["strike"].replace("_", ".")), "option_type": match["type"]}
 
 
-# Registered into the shared tables, which stay the single place a decision is read from.
+# The name parser is registered for the registry's cross-check; overrides, settlement indexes and the fee
+# model of Paradex live in the shared contracts tables.
 register_name_parser(VENUE, parse_option_name)
-FEE_MODELS.setdefault(VENUE, FEE_MODEL)
 
 
 def _status(listed: pd.Timestamp, expiry: pd.Timestamp, as_of: pd.Timestamp) -> str:
@@ -516,7 +509,6 @@ class ParadexOptions:
 
 
 __all__ = [
-    "FEE_MODEL",
     "OPTION_DATASETS",
     "ParadexOptions",
     "YEAR_DAYS",

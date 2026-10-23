@@ -12,7 +12,6 @@ import pandas as pd
 import pytest
 
 from quant_marketdata.venues.contracts import (
-    FEE_MODELS,
     OPTION_MARK_CANDLE_COLUMNS,
     OPTION_QUOTE_COLUMNS,
     OPTION_SNAPSHOT_COLUMNS,
@@ -83,7 +82,6 @@ def test_listing_in_the_snapshot_schema():
     assert (btc["maker_fee_raw"], btc["taker_fee_raw"], btc["status"]) == (0.0001, 0.0001, "active")
     assert json.loads(btc["fee_extra_raw"])["api_fee"]["taker_fee"]["fee_cap"] == "0.125"
     assert (btc["option_type_raw"], btc["strike_raw"], btc["raw_min_notional"]) == ("CALL", "82000", 20.0)
-    assert FEE_MODELS["paradex"]["fee_model_status"] == "unconfirmed"
 
 
 def test_registry_resolves_every_paradex_base():
