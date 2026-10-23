@@ -8,13 +8,6 @@ Quant-lab repo's `docs/PLATFORM.md`.
 
 ## [Unreleased]
 
-## [0.4.0] — 2026-10-23
-
-Dated contracts and two more venues: Paradex (perps and options), Derive (perps and options), Deribit option
-chains and Kalshi binaries, on shared contract schemas, with the scheduled tasks that record what only exists
-live (`qmd-snapshot`, `qmd-options-daily`). **Instrument ids change** for restricted trading sessions (see
-Changed): consumers keyed on `instrument_id` map the Extended stock perps when they move to this version.
-
 ### Added
 - **`Dataset.OPEN_INTEREST`**: `Venue.open_interest(symbols=None)`, a live snapshot (not stored) on the six
   adapters, one row per symbol (`OPEN_INTEREST_COLUMNS`: base units, price and its kind, USD value, the
@@ -28,6 +21,15 @@ Changed): consumers keyed on `instrument_id` map the Extended stock perps when t
   its funding premium is measured against (`index_kind`: Lighter, Binance, Aster, Extended `index`;
   Hyperliquid `oracle`; Paradex `underlying`) and the last trade (Hyperliquid: mid; Binance/Aster: none),
   one request per venue (`PRICES_COLUMNS`, `make_prices`). For the basis scan of Quant-lab (F2).
+
+## [0.4.0] — 2026-10-23
+
+Dated contracts and two more venues: Paradex (perps and options), Derive (perps and options), Deribit option
+chains and Kalshi binaries, on shared contract schemas, with the scheduled tasks that record what only exists
+live (`qmd-snapshot`, `qmd-options-daily`). **Instrument ids change** for restricted trading sessions (see
+Changed): consumers keyed on `instrument_id` map the Extended stock perps when they move to this version.
+
+### Added
 - **Paradex adapter** (`paradex`, perps only) over the public REST API (no SDK): instruments, funding,
   last/mark candles (1m-1h), specs, order book. Paradex funding is continuous; each whole hour becomes a
   settlement-equivalent event `rate = (index_h - index_{h-1}) / price` from the funding index (the
