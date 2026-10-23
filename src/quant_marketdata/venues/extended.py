@@ -8,7 +8,10 @@ API quirks this adapter absorbs (verified 2026-10-15):
 - The asset class is declared by ``category`` / ``subCategory`` (``Crypto``, ``RWA`` / ``Equity``,
   ``Commodity``, ``FX``, ``ETF/Index``, ``Pre-market``). ``ETF/Index`` mixes both classes and is left to
   the registry overrides.
-- ``collateralAssetName`` is ``USD`` for every market; it is kept as the settle asset as served.
+- ``collateralAssetName`` is ``USD`` for every market, but that one collateral asset is USDC (checked
+  2026-10-24): the docs' account model holds "a single collateral balance (USDC)", and ``info/assets`` gives
+  the ``USD`` asset the L1 id ``0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48``, the USDC ERC-20 on Ethereum. The
+  settle asset is therefore ``USDC`` (``COLLATERAL_ASSETS``); any other name would be kept as served.
 - ``tradingHours`` declares the session (``CONTINUOUS``, ``WEEKDAYS``, ``NO_OVERNIGHT``; checked
   2026-10-18), which the registry keys restricted-session ids on. ``<TICKER>_24_5-USD`` names are a
   listing batch, not a session: most active ones are ``CONTINUOUS``. Delisted markets are renamed in
@@ -81,6 +84,7 @@ CATEGORY_CLASSES: Dict[str, Optional[str]] = {
 STATUSES = {"ACTIVE": "active", "DELISTED": "inactive", "PRELISTED": "pending"}
 SESSIONS = {"CONTINUOUS": "24x7", "WEEKDAYS": "24x5", "NO_OVERNIGHT": "no-overnight"}
 LISTING_BATCH = "_24_5"
+COLLATERAL_ASSETS = {"USD": "USDC"}  # served name -> settle asset (see the module docstring)
 
 
 def session(market: Dict[str, Any]) -> Optional[str]:
@@ -128,11 +132,12 @@ class ExtendedVenue:
             created = int(m["createdAt"]) if m.get("createdAt") else None
             cls = asset_class(m)
             asset = (m.get("assetName") or "").removesuffix(LISTING_BATCH) or None
+            collateral = m.get("collateralAssetName")
             rows.append({
                 "venue": self.name,
                 "venue_symbol": m["name"],
                 "venue_market_id": m["name"],
-                "settle_asset": m.get("collateralAssetName"),
+                "settle_asset": COLLATERAL_ASSETS.get(collateral, collateral),
                 "asset_class": cls,
                 "underlying_ref": asset if cls not in (None, "crypto") else None,
                 "chain": None,

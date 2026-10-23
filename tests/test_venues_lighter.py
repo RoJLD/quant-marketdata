@@ -166,6 +166,15 @@ def test_resolve_lighter_snapshot():
     assert build.instruments["session"].eq("24x7").all()  # trading_hours declared empty
 
 
+def test_lighter_spx_is_the_memecoin_not_the_index():
+    snapshot = pd.DataFrame({"venue_symbol": ["SPX", "US500", "US100"], "venue": "lighter", "status": "active"})
+    rows = resolve("lighter", snapshot).instruments.set_index("venue_symbol")
+    spx = rows.loc["SPX"]
+    assert (spx["instrument_id"], spx["asset_class"], spx["mapping_source"]) == ("SPX-USD-PERP", "crypto", "override")
+    assert pd.isna(spx["underlying_ref"])
+    assert rows.loc["US500", "asset_class"] == "index" and rows.loc["US500", "underlying_ref"] == "US500"
+
+
 def test_resolve_reports_collisions():
     snapshot = pd.DataFrame({"venue_symbol": ["BONK", "1000BONK"], "venue": "lighter", "status": "active"})
     build = resolve("lighter", snapshot)

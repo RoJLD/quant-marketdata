@@ -91,6 +91,7 @@ def test_instruments_classes_and_registry():
     assert snapshot.loc["FTM-USD", "status"] == "inactive"
     assert snapshot.loc["XAU-USD", "asset_class"] == "commodity"
     assert snapshot.loc["BTC-USD", "listed_at"] == pd.Timestamp(1752829532673, unit="ms")
+    assert snapshot["settle_asset"].eq("USDC").all()  # served as "USD": the collateral is USDC
     build = resolve("extended", venue.instruments())
     rows = build.instruments.set_index("venue_symbol")
     assert rows.loc["BTC-USD", "instrument_id"] == "BTC-USD-PERP"
