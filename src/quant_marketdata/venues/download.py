@@ -116,6 +116,10 @@ def download_venue(plan: DownloadPlan, *, root=None, rate: float = 2.0,
     end = _now()
     results: List[DownloadResult] = []
 
+    if Dataset.INSTRUMENTS not in venue.capabilities:
+        logger.info("%s lists no perp instruments: nothing for qmd-download (dated contracts: qmd-snapshot)",
+                    venue.name)
+        return results
     instruments = venue.instruments()
     if plan.registry:
         build = resolve(venue.name, instruments)

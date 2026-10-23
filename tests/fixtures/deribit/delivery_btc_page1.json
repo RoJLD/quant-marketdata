@@ -1,0 +1,17 @@
+{
+ "jsonrpc": "2.0",
+ "result": {
+  "data": [
+   {
+    "date": "2016-03-25",
+    "delivery_price": 416.04
+   },
+   {
+    "date": "2016-03-18",
+    "delivery_price": 412.48
+   }
+  ],
+  "records_total": 5
+ },
+ "testnet": false
+}
