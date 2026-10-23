@@ -25,7 +25,7 @@ from quant_marketdata.venues.schema import Dataset
 from quant_marketdata.venues.snapshot import daily_task, main, snapshot_pass, venues_with
 
 FACTORIES = {
-    "derive": lambda: DeriveVenue(DeriveClient()),
+    "derive": lambda: DeriveVenue(DeriveClient(), clock=lambda: pd.Timestamp("2026-10-18 09:20")),
     "deribit": lambda: DeribitVenue(DeribitClient()),
     "kalshi": lambda: KalshiVenue(KalshiClient()),
 }
