@@ -1,0 +1,29 @@
+{
+ "cursor": "EhIKEHulfo1UH0PhvJyJ19AjjzIaDAjb9da7BhCgzem-Aw",
+ "trades": [
+  {
+   "count_fp": "128.00",
+   "created_time": "2025-01-01T21:59:59.495041Z",
+   "is_block_trade": false,
+   "no_price_dollars": "0.9900",
+   "taker_book_side": "bid",
+   "taker_outcome_side": "yes",
+   "taker_side": "yes",
+   "ticker": "KXBTCD-25JAN0117-T94749.99",
+   "trade_id": "8257a481-be23-4a76-9d45-805609f87555",
+   "yes_price_dollars": "0.0100"
+  },
+  {
+   "count_fp": "10.00",
+   "created_time": "2025-01-01T21:59:55.93706Z",
+   "is_block_trade": false,
+   "no_price_dollars": "0.9900",
+   "taker_book_side": "bid",
+   "taker_outcome_side": "yes",
+   "taker_side": "yes",
+   "ticker": "KXBTCD-25JAN0117-T94749.99",
+   "trade_id": "7ba57e8d-541f-43e1-bc9c-89d7d0238f32",
+   "yes_price_dollars": "0.0100"
+  }
+ ]
+}

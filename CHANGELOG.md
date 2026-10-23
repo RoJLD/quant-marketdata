@@ -44,6 +44,14 @@ Quant-lab repo's `docs/PLATFORM.md`.
   inverse prices converted to USD by the pass's index price and IV from percent to fraction (raw values
   kept), delivery prices since 2016 (`deribit:btc_usd`, 30-min TWAP per the venue docs), archive trades
   from `history.deribit.com` with IV at the trade.
+- **Kalshi adapter** (`kalshi`, `BinaryVenue`) for the declared series KXBTCD, KXBTC, KXETHD and KXETH:
+  markets with canonical bounds (`greater` -> [floor + 0.01, inf), `between` -> [floor, cap + 0.01),
+  `less` -> (-inf, cap)) and the event's `strike_date` as expiry (tickers, in New York time, are never
+  read), outcomes from `result` (recomputed from `expiration_value` on every settled market of the
+  fixtures and of a live day), the fixing method read per market (2025 trimmed mean, 2026 simple mean),
+  live quotes without invented sides, per-event and per-market candles (1m/1h/1d) and trades from both
+  data tiers (current and historical, split at `/historical/cutoff`) under one schema, the YES order book,
+  settlements per event, and the quadratic fee formula (`contracts.fees.kalshi_fee`, `unconfirmed`).
 - `download_venue` only lists perp instruments for a venue that declares `Dataset.INSTRUMENTS`.
 - `Dataset` members for dated contracts (`OPTION_CONTRACTS`, `OPTION_CHAIN`, ..., `SETTLEMENTS`) and
   `PERP_DATASETS` / `CONTRACT_DATASETS`; Lighter now declares `PERP_DATASETS` instead of every dataset.
