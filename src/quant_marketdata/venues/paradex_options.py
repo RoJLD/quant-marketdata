@@ -83,7 +83,7 @@ from quant_marketdata.venues.contracts.schema import (
     utc_naive,
 )
 from quant_marketdata.venues.http import HttpError
-from quant_marketdata.venues.schema import Dataset, UnsupportedDataset
+from quant_marketdata.venues.schema import Dataset
 
 VENUE = "paradex"
 YEAR_DAYS = 365.0
@@ -375,29 +375,41 @@ class ParadexOptions:
     """The dated-options half of ``ParadexVenue`` (``OptionsVenue``): HTTP on top of the parsers above."""
 
     client: Any
+    # A pass asks for each underlying in turn: the ~16 MB listing and the ~7 MB summary serve all of them.
+    listing_ttl = pd.Timedelta(seconds=60)
+    summary_ttl = pd.Timedelta(seconds=60)
     _listing: Optional[pd.DataFrame] = None
+    _listing_at: Optional[pd.Timestamp] = None
     _resolved: Optional[pd.DataFrame] = None
+    _summary: Optional[List[Mapping[str, Any]]] = None
+    _summary_at: Optional[pd.Timestamp] = None
+
+    def _fetch_listing(self, max_age: pd.Timedelta) -> pd.DataFrame:
+        now = _now()
+        if self._listing is None or self._listing_at is None or now - self._listing_at > max_age:
+            self._listing = parse_option_markets(self.client.get("markets").get("results") or [], now)
+            self._listing_at, self._resolved = now, None
+        return self._listing
 
     def option_contracts(self, underlying: Optional[str] = None, *, expired: bool = False) -> pd.DataFrame:
-        """Live option contracts (``markets``, ~16 MB) in ``OPTION_SNAPSHOT_COLUMNS``, optionally of one
-        native base. Paradex drops a contract from ``markets`` at expiry: ``expired=True`` is unsupported
-        (expired contracts are the registry's, their settlements ``settlements()``'s)."""
+        """Live option contracts (``markets``, ~16 MB, reused for ``listing_ttl``) in
+        ``OPTION_SNAPSHOT_COLUMNS``, optionally of one native base. Paradex drops a contract from ``markets``
+        at expiry: ``expired=True`` gives an empty listing (expired contracts are the registry's, their
+        fixings ``settlements()``'s)."""
         require(self, Dataset.OPTION_CONTRACTS)
         if expired:
-            raise UnsupportedDataset("paradex drops expired options from /markets: expired contracts come "
-                                     "from the contract registry, their fixings from settlements()")
-        listing = parse_option_markets(self.client.get("markets").get("results") or [], _now())
-        self._listing, self._resolved = listing, None
+            return frame_of([], OPTION_SNAPSHOT_COLUMNS)
+        listing = self._fetch_listing(self.listing_ttl)
         base = _base(underlying)
         if base is None or listing.empty:
             return listing
         return listing[listing["venue_base"] == base].reset_index(drop=True)
 
     def _contracts(self, symbols: Iterable[str]) -> pd.DataFrame:
-        """Resolved live contracts, cached; the listing is fetched again once when a symbol is unknown
-        (strikes are listed every 8 hours)."""
+        """Resolved live contracts, cached; the listing is fetched again when a symbol is unknown (strikes
+        are listed every 8 hours)."""
         if self._listing is None or not set(symbols) <= set(self._listing["venue_symbol"]):
-            self.option_contracts()
+            self._fetch_listing(pd.Timedelta(0))
         if self._resolved is None:
             build = resolve_option_contracts(VENUE, self._listing)
             self._resolved = (build.contracts if not build.contracts.empty
@@ -415,12 +427,17 @@ class ParadexOptions:
 
     def option_chain(self, underlying: str, expiry: Optional[datetime] = None, *,
                      ts_snapshot: Optional[pd.Timestamp] = None) -> pd.DataFrame:
-        """Live chain of one native base from ``markets/summary?market=ALL`` (one ~7 MB call); the listing
-        is cached across calls. ``contract_id`` is set for the resolved contracts."""
+        """Live chain of one native base from ``markets/summary?market=ALL`` (one ~7 MB call, reused for
+        ``summary_ttl``: the underlyings of one pass share it; each row keeps its own venue ``ts``).
+        ``contract_id`` is set for the resolved contracts."""
         require(self, Dataset.OPTION_CHAIN)
-        ts_snapshot = _now() if ts_snapshot is None else pd.Timestamp(ts_snapshot)
+        now = _now()
+        ts_snapshot = now if ts_snapshot is None else pd.Timestamp(ts_snapshot)
+        if self._summary is None or self._summary_at is None or now - self._summary_at > self.summary_ttl:
+            self._summary = self.client.get("markets/summary", {"market": "ALL"}).get("results") or []
+            self._summary_at = now
         base = _base(underlying)
-        rows = [r for r in self.client.get("markets/summary", {"market": "ALL"}).get("results") or []
+        rows = [r for r in self._summary
                 if str(r.get("symbol", "")).startswith(f"{base}-") and parse_option_name(r["symbol"])]
         contracts = self._contracts(r["symbol"] for r in rows)
         if expiry is not None:
@@ -472,19 +489,20 @@ class ParadexOptions:
 
     def settlements(self, index: str, start: Optional[datetime] = None,
                     end: Optional[datetime] = None) -> pd.DataFrame:
-        """Fixings of one index (``paradex:BTC`` or ``BTC``), ``SETTLEMENT_COLUMNS``. The expiries in
-        ``[start, end]`` are found in the trade history (``SETTLE_MARKET`` trades name every settled
-        contract) or, without ``start``, in the ``SETTLED`` events of ``markets/history``; one
-        ``settlement-price`` request per expiry gives its exact instant and TWAP."""
+        """Fixings of one index (``paradex:BTC`` or ``BTC``), ``SETTLEMENT_COLUMNS``. Expiries are found by
+        name: in the ``SETTLED`` events of ``markets/history`` (every settled contract, ~2.5 days back) and,
+        with ``start``, in the trade history since ``start`` (``SETTLE_MARKET`` trades name the contracts
+        that had an open position); one ``settlement-price`` request per expiry gives its exact instant and
+        TWAP. Run at least every other day, nothing is missed; an older expiry without an open position is
+        only reachable through a name the registry kept (``paradex_snapshot.settle_expired``)."""
         require(self, Dataset.SETTLEMENTS)
         base = _base(index)
         end = _now() if end is None else pd.Timestamp(end)
-        if start is None:
-            events = self.client.get("markets/history", {"market": "ALL"}).get("results") or []
-            names = [e["symbol"] for e in events if e.get("event_type") == "SETTLED"
-                     and str(e.get("symbol", "")).startswith(f"{base}-")]
-        else:
-            names = self.option_trades(base, start, end)["venue_symbol"].tolist()
+        events = self.client.get("markets/history", {"market": "ALL"}).get("results") or []
+        names = [e["symbol"] for e in events if e.get("event_type") == "SETTLED"
+                 and str(e.get("symbol", "")).startswith(f"{base}-")]
+        if start is not None:
+            names += self.option_trades(base, start, end)["venue_symbol"].tolist()
         by_date: Dict[pd.Timestamp, str] = {}
         for name in sorted(set(names)):
             parsed = parse_option_name(name)

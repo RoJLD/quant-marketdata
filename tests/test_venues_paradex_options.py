@@ -11,7 +11,6 @@ from statistics import NormalDist
 import pandas as pd
 import pytest
 
-from quant_marketdata.venues import UnsupportedDataset
 from quant_marketdata.venues.contracts import (
     FEE_MODELS,
     OPTION_MARK_CANDLE_COLUMNS,
@@ -297,14 +296,30 @@ def test_contracts_and_chain_through_the_venue():
     client = FakeParadexOptions()
     venue = ParadexVenue(client)
     assert set(venue.option_contracts("BTC")["venue_base"]) == {"BTC"}
-    with pytest.raises(UnsupportedDataset, match="registry"):
-        venue.option_contracts(expired=True)
+    expired = venue.option_contracts("BTC", expired=True)  # Paradex lists none: an empty listing
+    assert expired.empty and list(expired.columns) == OPTION_SNAPSHOT_COLUMNS
     chain = venue.option_chain("BTC", ts_snapshot=AS_OF)
     assert len(chain) == 6 and chain["contract_id"].str.startswith("BTC-USD-").all()
     assert [path for path, _ in client.calls].count("markets") == 1  # cached since option_contracts
     week = venue.option_chain("BTC", pd.Timestamp("2026-10-23 08:00"), ts_snapshot=AS_OF)
     assert len(week) == 5 and week["contract_id"].str.contains("20261023T0800").all()
     assert [path for path, _ in client.calls].count("markets") == 1
+
+
+def test_a_pass_fetches_the_listing_and_the_summary_once():
+    # qmd-snapshot asks per underlying: option_contracts(u) then option_chain(u), BTC then ETH.
+    client = FakeParadexOptions()
+    venue = ParadexVenue(client)
+    for underlying in ("BTC", "ETH"):
+        venue.option_contracts(underlying)
+        venue.option_chain(underlying)
+    paths = [path for path, _ in client.calls]
+    assert paths.count("markets") == 1 and paths.count("markets/summary") == 1
+    venue.listing_ttl = venue.summary_ttl = pd.Timedelta(0)  # an expired cache is fetched again
+    venue.option_contracts("BTC")
+    venue.option_chain("BTC")
+    paths = [path for path, _ in client.calls]
+    assert paths.count("markets") == 2 and paths.count("markets/summary") == 2
 
 
 def test_chain_refreshes_the_listing_once_on_an_unknown_symbol():
@@ -353,6 +368,10 @@ def test_mark_candles_and_settlements_through_the_venue():
     recent = venue.settlements("ETH")  # from the SETTLED events of markets/history
     assert recent["ts"].tolist() == [pd.Timestamp("2026-10-18 08:00")]
     assert recent["settlement_price"].iloc[0] == pytest.approx(2406.5910561466653)
+    # With a start (the daily task's last stored fixing), an expiry no open position settled through a
+    # trade is still found in markets/history: no ETH trade exists in this fake.
+    since = venue.settlements("ETH", pd.Timestamp("2026-10-17"), pd.Timestamp("2026-10-18 12:00"))
+    assert since["ts"].tolist() == [pd.Timestamp("2026-10-18 08:00")]
 
 
 # -- passes over a ContractStore -------------------------------------------------------------------
