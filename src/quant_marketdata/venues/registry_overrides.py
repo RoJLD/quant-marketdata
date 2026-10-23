@@ -39,7 +39,12 @@ LIGHTER: Dict[str, Override] = {
         ref=True,
     ),
     **_classify("SPY QQQ IWM DIA EWY SOXX SOXL SOXS URA BOTZ", "etf", "Exchange-traded fund perp", ref=True),
-    **_classify("SPX US500 US100", "index", "Equity index perp", ref=True),
+    **_classify("US500 US100", "index", "Equity index perp", ref=True),
+    "SPX": {
+        "asset_class": "crypto",
+        "why": "SPX6900 memecoin, as Hyperliquid SPX and Binance/Aster SPXUSDT: trades near 0.35 and sits in "
+               "Lighter's crypto insurance fund (checked 2026-10-24); the S&P 500 perp is US500",
+    },
     **_classify("US10Y", "rates", "US 10-year yield perp", ref=True),
     **_classify(
         "XAU XAG XCU XPD XPT WTI BRENTOIL NATGAS WHEAT",

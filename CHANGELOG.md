@@ -22,6 +22,21 @@ Quant-lab repo's `docs/PLATFORM.md`.
   Hyperliquid `oracle`; Paradex `underlying`) and the last trade (Hyperliquid: mid; Binance/Aster: none),
   one request per venue (`PRICES_COLUMNS`, `make_prices`). For the basis scan of Quant-lab (F2).
 
+### Fixed
+- **Extended `settle_asset` is `USDC`**, not the `USD` the API serves as `collateralAssetName`: Extended's one
+  collateral asset is USDC (docs: "a single collateral balance (USDC)"; `info/assets` gives it the L1 id of
+  the USDC ERC-20 on Ethereum). Ids do not change. Quant-lab's allocator blocked every Extended leg on the
+  `USD` value, which maps to no settlement asset.
+- **Lighter `SPX` is the SPX6900 memecoin** (`crypto`, no `underlying_ref`), not an equity index: it trades
+  near 0.35, sits in Lighter's crypto insurance fund, and matches Hyperliquid `SPX` and Binance/Aster
+  `SPXUSDT`; the S&P 500 perp is `US500`. Its id stays `SPX-USD-PERP`.
+
+### Documented
+- `registry`: `settle_asset` is the margin stablecoin, not the unit of a venue's price index. Hyperliquid's
+  oracle tracks USDT prices while Extended's index and Paradex's underlying are in USD, so cross-venue price
+  levels differ by the USDT/USD basis (9-13 bp on 2026-10-24); funding rates do not carry it. The USD1 books
+  of Binance (3) and Aster (27) are genuinely USD1-margined (`marginAsset` and `quoteAsset` both `USD1`).
+
 ## [0.4.0] — 2026-10-23
 
 Dated contracts and two more venues: Paradex (perps and options), Derive (perps and options), Deribit option

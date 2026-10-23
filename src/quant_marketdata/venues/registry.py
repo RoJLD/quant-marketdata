@@ -16,6 +16,13 @@ Several stablecoin books of one base on one venue (Binance ``BTCUSDT`` and ``BTC
 and ``BTCUSD1``) cannot share one canonical id: the venue's primary book (USDT) collapses to ``USD``, the
 others keep their stablecoin as quote (``BTC-USDC-PERP``).
 
+The collapse hides the unit prices are quoted in, and ``settle_asset`` does not give it either: it is the
+stablecoin positions margin and settle in, not the unit of the venue's index. On 2026-10-24 (BTC, ETH, SOL)
+Hyperliquid, USDC-settled, marked against an oracle within 1 bp of Binance's USDT index, while the Extended
+index and the Paradex underlying sat 9-13 bp lower, level with Binance's USDC index: the USDT/USD basis of
+the day (Coinbase: 1 USDT = 0.99886 USD). Comparing price levels of one canonical id across venues
+therefore measures that basis too; funding rates, being fractions of each venue's own price, do not carry it.
+
 Trading session (decided 2026-10-18). A contract that only trades on a restricted session is a different
 instrument from the continuous one, even on the same underlying: its price gaps over the closed hours and
 its funding is not comparable hour for hour. The session is therefore part of the id, as a suffix:
