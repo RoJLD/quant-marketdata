@@ -53,7 +53,7 @@ Quant-lab spec `2026-10-15-multi-venue-data-layer-design.md`):
 | `binance` (USD-M) | `BTCUSDT` | per symbol, 8h/4h/1h, changes over time | funding, candles, mark candles, specs |
 | `extended` | `BTC-USD` | 1h | funding, candles, mark candles, specs |
 | `aster` | `BTCUSDT` | per symbol, 8h/4h/2h/1h | funding, candles, mark candles, specs |
-| `paradex` (perps) | `BTC-USD-PERP`, `kPEPE-USD-PERP` | continuous; hourly events from the funding index | funding (from 2024-03-12), candles (1m-1h), mark candles, specs |
+| `paradex` (perps + options) | `BTC-USD-PERP`, `kPEPE-USD-PERP` | continuous; hourly events from the funding index | funding (from 2024-03-12), candles (1m-1h), mark candles, specs; options (see below) |
 | `derive` (perps + options) | `BTC-PERP` | continuous; hourly rate, ~12 days of history | funding, specs; options (see below) |
 
 Each adapter's module docstring lists the API quirks it absorbs. Paradex accrues funding continuously:
@@ -130,7 +130,7 @@ Paradex options join the same schemas in the Paradex adapter (they are discovere
   <day>.parts/`) compacted into daily files; trades and candles in monthly partitions; settlements per index.
 
 ```bash
-qmd-snapshot                 # one pass: BTC/ETH chains (Derive, Deribit) + Kalshi quotes, ~25 s, ~0.7 MB
+qmd-snapshot                 # one pass: BTC/ETH chains (Derive, Deribit, Paradex) + Kalshi quotes
 qmd-options-daily            # before 08:00 UTC: recent expiries, settlements, Kalshi candles, trades
 ```
 
@@ -175,6 +175,27 @@ trades = read_stream("lighter", "trades", "BTC", start="2026-10-17")
 liquidations = trades[trades["type"] == "liquidation"]
 book = book_at(read_stream("lighter", "order_book", "BTC", start="2026-10-17"))   # .levels("bid", 10)
 ```
+
+### Dated options: Paradex (`quant_marketdata.venues.paradex_snapshot`)
+
+Option listings, chains (quotes, IV, greeks) and mark candles exist only while a contract lives: they are
+recorded by passes into the dated-contract store (`venues.contracts.ContractStore`), the fixings of expired
+contracts are fetched afterwards by name.
+
+```python
+from quant_marketdata.venues import get_venue
+from quant_marketdata.venues.contracts import ContractStore
+from quant_marketdata.venues.paradex_snapshot import download_mark_candles, settle_expired, snapshot_pass
+
+venue, store = get_venue("paradex", rate=20), ContractStore.at()   # same root as the perps store
+snapshot_pass(venue, store, underlyings=("BTC", "ETH"))   # Paradex alone: registry + chain snapshots
+settle_expired(venue, store)                              # daily: fixings (30-min TWAP of the spot oracle)
+download_mark_candles(venue, store, "BTC")                # daily: mark candles of the live contracts
+```
+
+`qmd-snapshot` and `qmd-options-daily` already find Paradex by capability: do not schedule `snapshot_pass`
+next to them (every chain would be recorded twice). `download_mark_candles` is not yet called by
+`qmd-options-daily`.
 
 ## Scope
 

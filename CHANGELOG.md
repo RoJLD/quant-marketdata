@@ -63,6 +63,18 @@ Quant-lab repo's `docs/PLATFORM.md`.
 - `download_venue` only lists perp instruments for a venue that declares `Dataset.INSTRUMENTS`.
 - `Dataset` members for dated contracts (`OPTION_CONTRACTS`, `OPTION_CHAIN`, ..., `SETTLEMENTS`) and
   `PERP_DATASETS` / `CONTRACT_DATASETS`; Lighter now declares `PERP_DATASETS` instead of every dataset.
+- **Paradex options** (`ParadexVenue` is now also an `OptionsVenue`, `venues/paradex_options.py`): the
+  ~10k dated options of 14 underlyings in the canonical contract schemas, the name only cross-checked (day
+  not zero-padded, decimal strikes written `712_5`, the expiry hour from `expiry_at`: 08:00 UTC for crypto,
+  13:30-21:00 for the TradFi bases). Chains from one `markets/summary` call (Black-76 on
+  `F = S exp(f T)`, greeks w.r.t. spot, a 365-day year: recomputed exactly in the tests), trades by base
+  (expired contracts included), mark and underlying candles of live contracts, and fixings: the 30-min TWAP
+  of the spot oracle served by `markets/settlement-price` for expiries from 2026-05-21, found through the
+  registry or the `SETTLE_MARKET` trades (payoff kept as `settlement_payoff_raw`). Fee model
+  `unconfirmed` (12.5 % premium cap documented, base of the rate inferred).
+- `venues/paradex_snapshot.py`: `snapshot_pass` (full listing into the contract registry, append-only chain
+  snapshots per underlying, heartbeat; ~9 s for BTC + ETH), `settle_expired` (one request per base and
+  expiry) and `download_mark_candles` (monthly partitions), each step reported, none stopping the others.
 
 ### Changed
 - Registry: a restricted session is part of the instrument id (`ADBE-USD-PERP-24X5`,

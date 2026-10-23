@@ -1,0 +1,207 @@
+{
+ "results": [
+  {
+   "symbol": "ETH-USD-18OCT26-2340-P",
+   "event_type": "SETTLED",
+   "updated_at": 1792310403053,
+   "changed_fields": {
+    "settlement_price": 0,
+    "underlying_twap_price": 2406.5910561466653
+   }
+  },
+  {
+   "symbol": "ETH-USD-18OCT26-2340-C",
+   "event_type": "SETTLED",
+   "updated_at": 1792310403048,
+   "changed_fields": {
+    "settlement_price": 66.5910561466653,
+    "underlying_twap_price": 2406.5910561466653
+   }
+  },
+  {
+   "symbol": "ETH-USD-18OCT26-2550-P",
+   "event_type": "SETTLED",
+   "updated_at": 1792310403043,
+   "changed_fields": {
+    "settlement_price": 143.4089438533347,
+    "underlying_twap_price": 2406.5910561466653
+   }
+  },
+  {
+   "symbol": "ZEC-USD-6NOV26-950-P",
+   "event_type": "CREATED",
+   "updated_at": 1792339220956,
+   "changed_fields": {
+    "base_currency": "ZEC",
+    "quote_currency": "USD",
+    "settlement_currency": "USDC",
+    "order_size_increment": "0.1",
+    "price_tick_size": "0.001",
+    "min_notional": "20",
+    "open_at": 1792340108924,
+    "expiry_at": 1793952000000,
+    "asset_kind": "OPTION",
+    "market_kind": "cross",
+    "option_type": "PUT",
+    "strike_price": "950",
+    "position_limit": "20000",
+    "price_bands_width": 0.5,
+    "max_slippage": 0,
+    "max_open_orders": 150,
+    "max_funding_rate": 0,
+    "option_cross_margin_params": {
+     "imf": {
+      "long_itm": 0.4,
+      "premium_multiplier": 1,
+      "short_itm": 0.3,
+      "short_otm": 0.2,
+      "short_put_cap": 0.5
+     },
+     "mmf": {
+      "long_itm": 0.2,
+      "premium_multiplier": 0.5,
+      "short_itm": 0.15,
+      "short_otm": 0.1,
+      "short_put_cap": 0.25
+     },
+     "unpaired_scale_im": "1.2",
+     "unpaired_scale_mm": "1"
+    },
+    "oracle_ewma_factor": 0.043647610787352464,
+    "max_order_size": "2000",
+    "max_funding_rate_change": 0,
+    "max_tob_spread": 2,
+    "interest_rate": 0,
+    "clamp_rate": 0,
+    "funding_period_hours": 0,
+    "funding_multiplier": 1,
+    "fee_config": {
+     "api_fee": {
+      "maker_fee": {
+       "fee": "0.0001",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      },
+      "taker_fee": {
+       "fee": "0.0001",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      }
+     },
+     "interactive_fee": {
+      "maker_fee": {
+       "fee": "0",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      },
+      "taker_fee": {
+       "fee": "0",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      }
+     },
+     "rpi_fee": {
+      "maker_fee": {
+       "fee": "0.0001",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      },
+      "taker_fee": {
+       "fee": "0.0001",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      }
+     }
+    }
+   }
+  },
+  {
+   "symbol": "ZEC-USD-6NOV26-950-C",
+   "event_type": "CREATED",
+   "updated_at": 1792339220956,
+   "changed_fields": {
+    "base_currency": "ZEC",
+    "quote_currency": "USD",
+    "settlement_currency": "USDC",
+    "order_size_increment": "0.1",
+    "price_tick_size": "0.001",
+    "min_notional": "20",
+    "open_at": 1792340108924,
+    "expiry_at": 1793952000000,
+    "asset_kind": "OPTION",
+    "market_kind": "cross",
+    "option_type": "CALL",
+    "strike_price": "950",
+    "position_limit": "20000",
+    "price_bands_width": 0.5,
+    "max_slippage": 0,
+    "max_open_orders": 150,
+    "max_funding_rate": 0,
+    "option_cross_margin_params": {
+     "imf": {
+      "long_itm": 0.4,
+      "premium_multiplier": 1,
+      "short_itm": 0.3,
+      "short_otm": 0.2,
+      "short_put_cap": 0.5
+     },
+     "mmf": {
+      "long_itm": 0.2,
+      "premium_multiplier": 0.5,
+      "short_itm": 0.15,
+      "short_otm": 0.1,
+      "short_put_cap": 0.25
+     },
+     "unpaired_scale_im": "1.2",
+     "unpaired_scale_mm": "1"
+    },
+    "oracle_ewma_factor": 0.043647610787352464,
+    "max_order_size": "2000",
+    "max_funding_rate_change": 0,
+    "max_tob_spread": 2,
+    "interest_rate": 0,
+    "clamp_rate": 0,
+    "funding_period_hours": 0,
+    "funding_multiplier": 1,
+    "fee_config": {
+     "api_fee": {
+      "maker_fee": {
+       "fee": "0.0001",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      },
+      "taker_fee": {
+       "fee": "0.0001",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      }
+     },
+     "interactive_fee": {
+      "maker_fee": {
+       "fee": "0",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      },
+      "taker_fee": {
+       "fee": "0",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      }
+     },
+     "rpi_fee": {
+      "maker_fee": {
+       "fee": "0.0001",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      },
+      "taker_fee": {
+       "fee": "0.0001",
+       "fee_cap": "0.125",
+       "fee_floor": "-0.125"
+      }
+     }
+    }
+   }
+  }
+ ]
+}
