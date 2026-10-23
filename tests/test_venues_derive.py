@@ -240,7 +240,7 @@ def test_live_derive_btc_chain_and_settlements():
     assert build.ok, build.unresolved.head()
     chain = venue.option_chain("BTC")
     assert len(chain) > 100 and chain["iv_mark"].dropna().between(0.05, 5).all()
-    assert 10 <= len(venue.settlements("BTC-USD")) <= 16  # ~12 days of expiries (a window, not a count)
+    assert 10 <= len(venue.settlements("BTC-USD")) <= 24  # about two weeks of expiries (12-17 seen; a window, not a count)
     now = pd.Timestamp.now(tz="UTC").tz_localize(None).floor("h")
     funding = venue.funding("BTC-PERP", now - pd.Timedelta(days=2), now)
     assert 40 <= len(funding) <= 49 and funding["rate_1h"].abs().max() < 1e-3

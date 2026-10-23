@@ -26,8 +26,8 @@ API quirks this adapter absorbs (verified 2026-10-18):
 - Greeks are **undiscounted Black-76 on the forward ``f``** (the mark includes ``df``), ``vega`` per vol
   point and ``theta`` per calendar day: recomputed to 1e-4 on the recorded chain (BTC 23 OCT 82000 C and
   79000 P), ``greeks_reference = "forward"``.
-- ``get_option_settlement_prices`` serves the settlement prices of **~12 days of expiries only** (12 on
-  2026-10-18, 13 on 10-19: a time window, not a count): the daily
+- ``get_option_settlement_prices`` serves the settlement prices of **about two weeks of expiries only** (12 on
+  2026-10-18, 13 on 10-19, 17 on 10-23: a time window that varies, not a count): the daily
   task must keep them. The settlement method of the ``BTC-USD`` index is not documented (spec Q4):
   ``derive:BTC-USD`` has method ``unknown``.
 - ``get_trade_history`` (``currency``, ``instrument_type``, ``from_timestamp``/``to_timestamp`` in ms,
@@ -268,7 +268,7 @@ class DeriveVenue:
     def settlements(self, index: str, start: Optional[datetime] = None,
                     end: Optional[datetime] = None) -> pd.DataFrame:
         """Fixings of an option index (``BTC-USD`` as in ``option_details.index``, or the currency):
-        ~12 days of expiries only."""
+        about two weeks of expiries only (12 to 17 observed)."""
         require(self, Dataset.SETTLEMENTS)
         currency = index.split("-")[0]
         result = self._call("get_option_settlement_prices", {"currency": currency})

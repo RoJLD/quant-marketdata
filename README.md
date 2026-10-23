@@ -96,7 +96,7 @@ hourly vol are estimated in Quant-lab.
 
 | Venue | Protocol | Contracts | Live (snapshot) | History |
 |---|---|---|---|---|
-| `derive` | `OptionsVenue` (+ perps) | `get_all_instruments`, ~11 days of expiries | chains per expiry, venue greeks (undiscounted Black-76 on the forward) | trades since 2024-01 (no trader ids); settlements of ~12 days of expiries |
+| `derive` | `OptionsVenue` (+ perps) | `get_all_instruments`, ~11 days of expiries | chains per expiry, venue greeks (undiscounted Black-76 on the forward) | trades since 2024-01 (no trader ids); settlements of about two weeks of expiries |
 | `deribit` | `OptionsVenue` | inverse BTC/ETH (linear USDC opt-in) | one book summary per currency: USD prices via the pass's index, IV / 100, no greeks | deliveries since 2016; archive trades with IV |
 | `kalshi` | `BinaryVenue` | KXBTCD, KXBTC, KXETHD, KXETH (series table only) | quotes of open markets, YES book | markets, outcomes, 1m/1h/1d candles and trades from both data tiers |
 
