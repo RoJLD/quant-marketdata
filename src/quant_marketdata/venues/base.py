@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Callable, Dict, FrozenSet, Protocol, Tuple, runtime_checkable
+from typing import Callable, Dict, FrozenSet, Optional, Protocol, Sequence, Tuple, runtime_checkable
 
 import pandas as pd
 
@@ -37,6 +37,15 @@ class Venue(Protocol):
     def order_book(self, symbol: str, depth: int = 50) -> dict:
         """Live book ``{"bids": [(price, size)], "asks": [...], "ts", "venue", "symbol"}``, best first
         (``schema.make_book``), directly usable by ``paper_execution`` / ``market_impact``."""
+
+    def open_interest(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live open interest, ``OPEN_INTEREST_COLUMNS`` (``schema.make_open_interest``), one row per symbol
+        (default: every perp; per-symbol venues then make one request per symbol), with the venue's
+        ``oi_convention``."""
+
+    def prices(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live mark / index / last prices, ``PRICES_COLUMNS`` (``schema.make_prices``), one row per symbol
+        (default: every perp), one request per venue."""
 
     def specs(self) -> pd.DataFrame:
         """Current specs of every instrument (fees, margins, sizes, status), one row per instrument."""

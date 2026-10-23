@@ -17,14 +17,16 @@ API quirks this adapter absorbs (verified 2026-10-15):
 - ``market_config.trading_hours`` is empty (continuous) on every perp (checked 2026-10-18); any other
   value is passed on as the session, which the registry reports as unresolved until it is mapped.
 - ``exchangeMetrics`` open interest is the notional of **both sides**; series are padded with zeros before
-  listing, and an unknown symbol yields zeros rather than an error.
+  listing, and an unknown symbol yields zeros rather than an error. The live ``open_interest`` of
+  ``orderBookDetails`` is in base units and counts **one side**: valued at ``mark_price`` it is half the
+  ``exchangeMetrics`` value of the day (ratio 1.96 on BTC, 1.98 on ETH, 2026-10-19).
 """
 
 from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import pandas as pd
 
@@ -40,6 +42,8 @@ from quant_marketdata.venues.schema import (
     empty_frame,
     finalize_funding,
     make_book,
+    make_open_interest,
+    make_prices,
 )
 
 BASE_URL = "https://mainnet.zklighter.elliot.ai/api/v1"
@@ -201,6 +205,19 @@ class LighterVenue:
 
         return make_book(orders("bids"), orders("asks"), venue=self.name, symbol=symbol, depth=depth)
 
+    def open_interest(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live open interest of every perp from ``orderBookDetails`` (one request): base units, one side,
+        valued at the mark price."""
+        require(self, Dataset.OPEN_INTEREST)
+        return make_open_interest({m["symbol"]: parse_open_interest(m) for m in self._markets()}, symbols)
+
+    def prices(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live mark, index and last prices of every perp from ``orderBookDetails`` (one request)."""
+        require(self, Dataset.PRICES)
+        return make_prices({m["symbol"]: {"mark_price": m.get("mark_price"), "index_price": m.get("index_price"),
+                                          "last_price": m.get("last_trade_price"), "index_kind": "index"}
+                            for m in self._markets()}, symbols)
+
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         require(self, Dataset.DAILY_METRICS)
         series = {}
@@ -258,6 +275,14 @@ def parse_candles(records: List[Dict[str, Any]], price: str) -> pd.DataFrame:
     return out.sort_index()
 
 
+def parse_open_interest(market: Dict[str, Any]) -> Dict[str, Any]:
+    """One ``orderBookDetails`` market -> an open-interest record (base units, one side, mark price)."""
+    price = market.get("mark_price") or market.get("last_trade_price")
+    return {"open_interest_base": float(market.get("open_interest") or 0.0),
+            "price": float(price) if price is not None else float("nan"),
+            "price_kind": "mark" if market.get("mark_price") else "last", "oi_convention": "one_side"}
+
+
 def parse_daily_metrics(open_interest: pd.Series, volume: pd.Series) -> pd.DataFrame:
     """Align the two daily series and drop the zero padding the API adds before listing."""
     frame = pd.DataFrame({"open_interest_usd": open_interest, "volume_usd": volume}).sort_index()
@@ -272,4 +297,4 @@ def parse_daily_metrics(open_interest: pd.Series, volume: pd.Series) -> pd.DataF
 
 register_venue(LighterVenue.name, LighterVenue)
 
-__all__ = ["LighterVenue", "parse_candles", "parse_daily_metrics", "parse_fundings"]
+__all__ = ["LighterVenue", "parse_candles", "parse_daily_metrics", "parse_fundings", "parse_open_interest"]

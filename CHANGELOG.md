@@ -8,6 +8,20 @@ Quant-lab repo's `docs/PLATFORM.md`.
 
 ## [Unreleased]
 
+### Added
+- **`Dataset.OPEN_INTEREST`**: `Venue.open_interest(symbols=None)`, a live snapshot (not stored) on the six
+  adapters, one row per symbol (`OPEN_INTEREST_COLUMNS`: base units, price and its kind, USD value, the
+  venue's `oi_convention`, timestamp, per-symbol `error`), and `one_side_usd(snapshot)` to compare venues.
+  Conventions, checked on live payloads 2026-10-19: Lighter's `orderBookDetails.open_interest` counts one
+  side (half its both-sides `exchangeMetrics` series: 1.96 on BTC, 1.98 on ETH); Paradex's
+  `markets/summary.open_interest` counts both sides (= `open_interest_long + open_interest_short`);
+  Hyperliquid (`metaAndAssetCtxs`), Binance and Aster (`openInterest`, one request per symbol, mark price
+  from `premiumIndex`) and Extended (`marketStats`, USD as published) count one side.
+- **`Dataset.PRICES`**: `Venue.prices(symbols=None)`, a live snapshot of every perp's mark price, the index
+  its funding premium is measured against (`index_kind`: Lighter, Binance, Aster, Extended `index`;
+  Hyperliquid `oracle`; Paradex `underlying`) and the last trade (Hyperliquid: mid; Binance/Aster: none),
+  one request per venue (`PRICES_COLUMNS`, `make_prices`). For the basis scan of Quant-lab (F2).
+
 ## [0.4.0] — 2026-10-23
 
 Dated contracts and two more venues: Paradex (perps and options), Derive (perps and options), Deribit option

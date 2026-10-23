@@ -71,6 +71,11 @@ its funding index is sampled at every whole hour and each hour becomes one settl
   `venues/registry_overrides.py`.
 - **Store**: root = `--root` -> `$QUANT_MARKETDATA_ROOT` -> `./data/marketdata`; re-running a download only
   fetches what is new.
+- **Live snapshots** (not stored): `order_book(symbol)` (`Dataset.BOOK`), `open_interest(symbols)`
+  (`Dataset.OPEN_INTEREST`) and `prices(symbols)` (`Dataset.PRICES`: mark, index, last) on every perp adapter. Open interest is published as each venue counts it (Lighter,
+  Hyperliquid, Binance, Aster, Extended: one side; Paradex: both sides, longs + shorts) with its
+  `oi_convention`; compare venues on `one_side_usd(snapshot)`. Binance and Aster serve one symbol per
+  request, the others every market in one.
 
 ```bash
 pip install "quant-marketdata[store]"   # pyarrow for the Parquet store

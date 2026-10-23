@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import pandas as pd
 
@@ -40,6 +40,8 @@ from quant_marketdata.venues.schema import (
     empty_frame,
     finalize_funding,
     make_book,
+    make_open_interest,
+    make_prices,
 )
 
 BASE_URL = "https://api.starknet.extended.exchange/api/v1"
@@ -109,7 +111,7 @@ def asset_class(market: Dict[str, Any]) -> Optional[str]:
 class ExtendedVenue:
     name = "extended"
     capabilities = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
-                              Dataset.SPECS, Dataset.BOOK})
+                              Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST, Dataset.PRICES})
     resolutions = tuple(RESOLUTIONS)
 
     def __init__(self, client: Optional[JsonClient] = None, *, rate: float = 2.0) -> None:
@@ -199,12 +201,42 @@ class ExtendedVenue:
                          [(lv["price"], lv["qty"]) for lv in data.get("ask") or []],
                          venue=self.name, symbol=symbol, depth=depth)
 
+    def open_interest(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live open interest of every perp from the ``marketStats`` of ``info/markets`` (one request):
+        ``openInterest`` in USD and ``openInterestBase`` in base units, one side, with the mark price."""
+        require(self, Dataset.OPEN_INTEREST)
+        return make_open_interest({m["name"]: parse_market_stats(m.get("marketStats") or {})
+                                   for m in self._markets()}, symbols)
+
+    def prices(self, symbols: Optional[Sequence[str]] = None) -> pd.DataFrame:
+        """Live mark, index and last prices of every perp from the ``marketStats`` of ``info/markets``."""
+        require(self, Dataset.PRICES)
+        records = {}
+        for m in self._markets():
+            stats = m.get("marketStats") or {}
+            records[m["name"]] = {"mark_price": stats.get("markPrice"), "index_price": stats.get("indexPrice"),
+                                  "last_price": stats.get("lastPrice"), "index_kind": "index"}
+        return make_prices(records, symbols)
+
     def daily_metrics(self, symbol: str) -> pd.DataFrame:
         require(self, Dataset.DAILY_METRICS)  # no open-interest history in the public API
         raise AssertionError("unreachable")
 
 
 # -- parsers (pure, unit-tested on recorded payloads) ----------------------------------------------
+
+
+def parse_market_stats(stats: Dict[str, Any]) -> Dict[str, Any]:
+    """A market's ``marketStats`` -> an open-interest record (USD as published, base units, one side)."""
+
+    def num(key: str) -> float:
+        return float(stats[key]) if stats.get(key) is not None else float("nan")
+
+    record = {"open_interest_base": num("openInterestBase"), "price": num("markPrice"), "price_kind": "mark",
+              "oi_convention": "one_side"}
+    if stats.get("openInterest") is not None:
+        record["open_interest_usd"] = num("openInterest")
+    return record
 
 
 def parse_funding(records: List[Dict[str, Any]]) -> pd.DataFrame:
@@ -240,4 +272,4 @@ def parse_candles(records: List[Dict[str, Any]], price: str) -> pd.DataFrame:
 
 register_venue(ExtendedVenue.name, ExtendedVenue)
 
-__all__ = ["ExtendedVenue", "asset_class", "parse_candles", "parse_funding", "session"]
+__all__ = ["ExtendedVenue", "asset_class", "parse_candles", "parse_funding", "parse_market_stats", "session"]
