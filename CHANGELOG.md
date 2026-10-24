@@ -21,6 +21,17 @@ Quant-lab repo's `docs/PLATFORM.md`.
   its funding premium is measured against (`index_kind`: Lighter, Binance, Aster, Extended `index`;
   Hyperliquid `oracle`; Paradex `underlying`) and the last trade (Hyperliquid: mid; Binance/Aster: none),
   one request per venue (`PRICES_COLUMNS`, `make_prices`). For the basis scan of Quant-lab (F2).
+- **Binance Vision open-interest history** (`venues.binance_vision`, `qmd-binance-vision`): the daily USD-M
+  `metrics` archives of data.binance.vision over plain HTTPS, each zip verified against its `.CHECKSUM`
+  (SHA-256) before it is read, stored as `Dataset.OPEN_INTEREST_HISTORY` (`OPEN_INTEREST_HISTORY_COLUMNS`:
+  5-minute open interest in base units and USD, one side, the long/short ratios, `source`); a run fetches
+  only the days a series lacks, in both directions. The REST `openInterestHist` keeps 30 days only. Rows are
+  stamped like that endpoint: an archive row labelled t is the snapshot REST stamps t + 5 min (identical
+  values on every common stamp, 2026-10-24); the label stays in `create_time_raw`. **Research only**: the
+  Binance Vision Dataset Terms v1.0 (2026-08-26) license the archives CC BY-NC-SA 4.0 for non-commercial,
+  non-production research and exclude live trading and fund tooling, so `--root` has no default
+  (no `QUANT_MARKETDATA_ROOT` fallback). Funding stays on REST (`BinanceVenue.funding`, full history).
+- `JsonClient.get_bytes`: raw bodies under the same pacing and retries.
 
 ### Fixed
 - **Extended `settle_asset` is `USDC`**, not the `USD` the API serves as `collateralAssetName`: Extended's one

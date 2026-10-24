@@ -37,6 +37,8 @@ class Dataset(str, Enum):
     BOOK = "book"  # live order book snapshot (not stored: the stream recorder keeps the history)
     OPEN_INTEREST = "open_interest"  # live open-interest snapshot (not stored: consumers journal it)
     PRICES = "prices"  # live mark / index / last price snapshot (not stored: consumers journal it)
+    # Stored from bulk archives, not from a venue adapter: ``quant_marketdata.venues.binance_vision``.
+    OPEN_INTEREST_HISTORY = "open_interest_history"
     # Dated contracts (options and binaries): ``quant_marketdata.venues.contracts``.
     OPTION_CONTRACTS = "option_contracts"
     OPTION_CHAIN = "option_chain"
@@ -52,7 +54,8 @@ class Dataset(str, Enum):
 PERP_DATASETS = frozenset({Dataset.INSTRUMENTS, Dataset.FUNDING, Dataset.CANDLES, Dataset.MARK_CANDLES,
                            Dataset.DAILY_METRICS, Dataset.SPECS, Dataset.BOOK, Dataset.OPEN_INTEREST,
                            Dataset.PRICES})
-CONTRACT_DATASETS = frozenset(Dataset) - PERP_DATASETS
+ARCHIVE_DATASETS = frozenset({Dataset.OPEN_INTEREST_HISTORY})
+CONTRACT_DATASETS = frozenset(Dataset) - PERP_DATASETS - ARCHIVE_DATASETS
 
 ASSET_CLASSES = frozenset({"crypto", "equity", "etf", "index", "rates", "commodity", "fx", "private"})
 
@@ -92,6 +95,10 @@ DAILY_METRICS_COLUMNS = ["open_interest_usd", "volume_usd", "oi_convention"]
 OPEN_INTEREST_COLUMNS = ["symbol", "open_interest_base", "price", "open_interest_usd", "price_kind",
                          "oi_convention", "ts", "error"]
 OI_CONVENTIONS = frozenset({"one_side", "both_sides"})
+
+# Stored open-interest history (``Dataset.OPEN_INTEREST_HISTORY``), indexed by snapshot time; ``source`` names the
+# archive it came from (its licence is not the venue API's).
+OPEN_INTEREST_HISTORY_COLUMNS = ["open_interest_base", "open_interest_usd", "oi_convention", "source"]
 
 PRICES_COLUMNS = ["symbol", "mark_price", "index_price", "last_price", "index_kind", "ts", "error"]
 
@@ -228,6 +235,7 @@ def funding_grid(events: pd.DataFrame, mode: str) -> pd.Series:
 
 
 __all__ = [
+    "ARCHIVE_DATASETS",
     "CANDLE_COLUMNS",
     "CONTRACT_DATASETS",
     "DAILY_METRICS_COLUMNS",
@@ -237,6 +245,7 @@ __all__ = [
     "INSTRUMENT_COLUMNS",
     "OI_CONVENTIONS",
     "OPEN_INTEREST_COLUMNS",
+    "OPEN_INTEREST_HISTORY_COLUMNS",
     "PERP_DATASETS",
     "PRICES_COLUMNS",
     "SESSIONS",
