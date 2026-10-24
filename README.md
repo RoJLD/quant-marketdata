@@ -181,6 +181,24 @@ liquidations = trades[trades["type"] == "liquidation"]
 book = book_at(read_stream("lighter", "order_book", "BTC", start="2026-10-17"))   # .levels("bid", 10)
 ```
 
+### Open-interest history: Binance Vision archives (`quant_marketdata.venues.binance_vision`)
+
+Binance's REST `openInterestHist` keeps 30 days; the daily USD-M `metrics` archives of
+[data.binance.vision](https://data.binance.vision) hold the same 5-minute open interest (base units and USD,
+one side, plus the long/short ratios) back to the listing. Each zip is checked against its `.CHECKSUM`
+(SHA-256) before it is read, rows are stamped like the REST endpoint (the archive's label + 5 min) and land in
+`venues/binance/open_interest_history/<SYMBOL>.parquet` (`Dataset.OPEN_INTEREST_HISTORY`); a re-run fetches
+only the days a series lacks.
+
+**Licence: research only.** The archives are not under the API terms: the Binance Vision Dataset Terms v1.0
+(2026-08-26) license them CC BY-NC-SA 4.0 for non-commercial, non-production research and exclude live
+trading and integration into fund tooling. `--root` has no default, so keep them in a research store, never
+in the store a fund reads.
+
+```bash
+qmd-binance-vision --root D:/research/marketdata --symbols BTCUSDT ETHUSDT --start 2025-10-01
+```
+
 ### Dated options: Paradex (`quant_marketdata.venues.paradex_snapshot`)
 
 Option listings, chains (quotes, IV, greeks) and mark candles exist only while a contract lives: they are

@@ -1,4 +1,5 @@
-"""Minimal JSON-over-HTTP client for public venue APIs: stdlib only, rate limited, with backoff.
+"""Minimal JSON-over-HTTP client for public venue APIs (and raw bodies: ``get_bytes``): stdlib only, rate
+limited, with backoff.
 
 Public venue APIs throttle hard (Lighter: ~100 requests in a burst, ~2/s sustained), so historical
 downloads are sequential and paced; concurrency would only trade requests for 429s.
@@ -76,11 +77,11 @@ class JsonClient:
         self._open = opener or urllib.request.urlopen
 
     def get(self, path: str, params: Optional[Mapping[str, Any]] = None) -> Any:
-        query = {k: _param(v) for k, v in (params or {}).items() if v is not None}
-        url = f"{self.base_url}/{path.lstrip('/')}"
-        if query:
-            url = f"{url}?{urllib.parse.urlencode(query)}"
-        return self._request(urllib.request.Request(url, headers={"User-Agent": USER_AGENT}))
+        return self._request(self._get_request(path, params))
+
+    def get_bytes(self, path: str, params: Optional[Mapping[str, Any]] = None) -> bytes:
+        """The raw body (archives, checksum files), under the same pacing and retries."""
+        return self._request(self._get_request(path, params), read=lambda response: response.read())
 
     def post(self, path: str, payload: Mapping[str, Any]) -> Any:
         url = f"{self.base_url}/{path.lstrip('/')}"
@@ -88,12 +89,19 @@ class JsonClient:
         headers = {"Content-Type": "application/json", "User-Agent": USER_AGENT}
         return self._request(urllib.request.Request(url, data=body, headers=headers))
 
-    def _request(self, request: urllib.request.Request) -> Any:
+    def _get_request(self, path: str, params: Optional[Mapping[str, Any]]) -> urllib.request.Request:
+        query = {k: _param(v) for k, v in (params or {}).items() if v is not None}
+        url = f"{self.base_url}/{path.lstrip('/')}"
+        if query:
+            url = f"{url}?{urllib.parse.urlencode(query)}"
+        return urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+
+    def _request(self, request: urllib.request.Request, read: Callable[[Any], Any] = json.load) -> Any:
         for attempt in range(1, self.attempts + 1):
             self.limiter.wait()
             try:
                 with self._open(request, timeout=self.timeout) as response:  # noqa: S310 (venue hosts)
-                    return json.load(response)
+                    return read(response)
             except urllib.error.HTTPError as exc:
                 body = exc.read().decode("utf-8", "replace") if exc.fp else ""
                 if exc.code not in RETRYABLE_STATUSES or attempt == self.attempts:

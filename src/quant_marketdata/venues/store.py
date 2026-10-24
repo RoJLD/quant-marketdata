@@ -7,6 +7,7 @@ Layout under the root::
     venues/<venue>/candles/<resolution>/<symbol>.parquet
     venues/<venue>/mark_candles/<resolution>/<symbol>.parquet
     venues/<venue>/daily_metrics/<symbol>.parquet
+    venues/<venue>/open_interest_history/<symbol>.parquet   (bulk archives: venues.binance_vision)
     venues/<venue>/specs.parquet
 
 The root is resolved at call time: ``root`` argument -> env ``QUANT_MARKETDATA_ROOT`` ->
