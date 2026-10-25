@@ -8,6 +8,12 @@ Quant-lab repo's `docs/PLATFORM.md`.
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-10-25
+
+Live open-interest and price snapshots on the six perp venues, Binance Vision open-interest history (research
+only), and two registry corrections: Extended settles in USDC, and Lighter's `SPX` is the SPX6900 memecoin.
+Consumers moving from v0.3.0 also get v0.4.0's instrument-id change for restricted trading sessions.
+
 ### Added
 - **`Dataset.OPEN_INTEREST`**: `Venue.open_interest(symbols=None)`, a live snapshot (not stored) on the six
   adapters, one row per symbol (`OPEN_INTEREST_COLUMNS`: base units, price and its kind, USD value, the
