@@ -459,6 +459,55 @@ def test_mark_candles_per_contract_and_one_underlying_series(tmp_path, frozen):
     assert len(again) == len(candles)  # merged on (venue_symbol, price_type, ts)
 
 
+class _Ticks:
+    """A clock advancing one second per reading."""
+
+    def __init__(self):
+        self.now = 0.0
+
+    def __call__(self):
+        self.now += 1.0
+        return self.now
+
+
+def test_mark_candles_budget_takes_the_soonest_expiries_first(tmp_path, frozen):
+    store = ContractStore.at(tmp_path)
+    frozen["now"] = pd.Timestamp("2026-10-18 16:00")
+    # Deadline read at 1 s + 2 s of budget: the underlying (2 s) and one contract (3 s) start, then no more.
+    report = download_mark_candles(ParadexVenue(FakeParadexOptions()), store, "BTC", workers=1,
+                                   budget=pd.Timedelta(seconds=2), clock=_Ticks())
+    assert (report["contracts"], report["deferred"], report["rows"]) == (6, 5, 6) and not report["errors"]
+    candles = store.read_monthly("paradex", Dataset.OPTION_MARK_CANDLES, "BTC-USD", resolution="1h")
+    assert set(candles["venue_symbol"]) == {"BTC-USD", "BTC-USD-23OCT26-80000-C"}  # expires 10-23, not 11-27
+    report = download_mark_candles(ParadexVenue(FakeParadexOptions()), store, "BTC")  # the next run
+    assert report["deferred"] == 0
+    candles = store.read_monthly("paradex", Dataset.OPTION_MARK_CANDLES, "BTC-USD", resolution="1h")
+    assert candles["venue_symbol"].nunique() == 7 and len(candles) == 21
+
+
+def test_mark_candles_resume_at_the_last_stored_candle(tmp_path, frozen):
+    store = ContractStore.at(tmp_path)
+
+    def starts(as_of):  # the first bar asked for, per series (a long history takes several pages)
+        frozen["now"] = as_of
+        client = FakeParadexOptions()
+        download_mark_candles(ParadexVenue(client), store, "BTC")
+        first = {}
+        for path, p in client.calls:
+            if path == "markets/klines":
+                series = (p["symbol"], p["price_kind"])
+                first[series] = min(first.get(series, p["start_at"]), p["start_at"])
+        return {pd.Timestamp(ms, unit="ms") for ms in first.values()}
+
+    assert starts(pd.Timestamp("2026-10-18 16:00")) == {pd.Timestamp("2026-08-27 12:15:03.284"),  # listings
+                                                        pd.Timestamp("2026-10-01 12:15:03.978"),
+                                                        pd.Timestamp("2026-10-01 12:15:03.979")}
+    # Stored up to 15:00: an hour later the last two days are read again (the last bar was partial)...
+    assert starts(pd.Timestamp("2026-10-18 17:00")) == {pd.Timestamp("2026-10-16 17:00")}
+    # ...and after five days off each series resumes at its last candle, not two days back: no hole.
+    assert starts(pd.Timestamp("2026-10-23 07:00")) == {pd.Timestamp("2026-10-18 15:00")}
+
+
 @pytest.mark.live
 def test_live_paradex_options_pass(tmp_path):
     store = ContractStore.at(tmp_path)

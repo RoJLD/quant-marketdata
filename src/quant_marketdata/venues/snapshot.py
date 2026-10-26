@@ -1,7 +1,8 @@
 """Snapshot passes for dated contracts: what the venues only serve live, recorded into the store.
 
     qmd-snapshot                      # one pass: option chains + binary quotes, registries, heartbeats
-    qmd-options-daily                 # registries with recent expiries, settlements, candles, trades
+    qmd-options-daily                 # registries with recent expiries, settlements, candles, trades,
+                                      # mark candles of the live options (Paradex)
 
 A pass is one scheduled task that exits (no orphan process); a failing venue never stops the others and
 the exit code is 1 if any failed. Each pass starts from one ``ts_snapshot`` (local UTC clock), updates the
@@ -23,7 +24,11 @@ Defaults kept from the spec's open questions (§6, validated 2026-10-18):
 The daily task (before 08:00 UTC): option registries with their recent expiries (Derive ``expired=true``
 reaches ~11 days back, Deribit only the last expiry) and settlement prices (Derive: ~12 days of expiries;
 Deribit: deliveries since 2016, incremental), Kalshi markets settled over the last days (outcomes, the
-settlement of each event and its 1-minute candles from the event endpoint), and incremental option trades.
+settlement of each event and its 1-minute candles from the event endpoint), incremental option trades, and
+the hourly mark candles of every live option of the venues serving them (Paradex, only until expiry:
+``paradex_snapshot.download_mark_candles``). That step has its own client (``--mark-candles-rate``: about one
+request per live contract and day, ~1,000 per base) and a time budget per underlying
+(``--mark-candles-minutes``): soonest expiries first, the contracts left are fetched by the next run.
 """
 
 from __future__ import annotations
@@ -47,6 +52,7 @@ from quant_marketdata.venues.contracts.registry import (
     update_contract_registry,
 )
 from quant_marketdata.venues.contracts.store import ContractStore, day_of
+from quant_marketdata.venues.paradex_snapshot import download_mark_candles
 from quant_marketdata.venues.schema import Dataset
 
 logger = logging.getLogger(__name__)
@@ -56,6 +62,9 @@ DEFAULT_SERIES = ("KXBTCD", "KXBTC", "KXETHD", "KXETH")
 DEFAULT_SINCE_DAYS = 2
 SETTLEMENT_KEYS = ["ts", "settlement_index_id"]
 CANDLE_BATCH_EVENTS = 24  # Kalshi events fetched between two writes of a monthly candle file
+# Option mark candles: the task's other steps take 13-22 minutes of the host's 30 (2026-10-23..26).
+MARK_CANDLES_BUDGET = pd.Timedelta(minutes=3)  # per underlying
+MARK_CANDLES_RATE = 10.0  # requests per second (Paradex: 1,500 a minute per IP)
 
 
 @dataclass
@@ -66,6 +75,7 @@ class StepResult:
     rows: int = 0
     unresolved: int = 0
     error: Optional[str] = None
+    deferred: int = 0  # series left to the next run by a time budget
 
 
 @dataclass
@@ -352,9 +362,32 @@ def daily_binaries(store: ContractStore, venue, series_list: Sequence[str], as_o
             _run(run, "binary_candles_write", series, write_job)
 
 
+def daily_mark_candles(store: ContractStore, venue, underlyings: Sequence[str], as_of: pd.Timestamp,
+                       run: VenueRun, *, budget: Optional[pd.Timedelta]) -> None:
+    """Mark candles of the live options of each underlying, served only until expiry, within ``budget`` per
+    underlying; a contract that fails is reported, the others are stored."""
+    for underlying in underlyings:
+        def job(u=underlying) -> StepResult:
+            report = download_mark_candles(venue, store, u, as_of=as_of, budget=budget)
+            errors, error = report["errors"], None
+            if errors:
+                symbol, message = next(iter(errors.items()))
+                error = f"{len(errors)} of {report['contracts'] + 1} series failed, e.g. {symbol}: {message}"
+                logger.warning("%s option_mark_candles %s: %s", venue.name, u, error)
+            if report["deferred"]:
+                logger.warning("%s option_mark_candles %s: budget spent, %d of %d series left to the next run",
+                               venue.name, u, report["deferred"], report["contracts"] + 1)
+            return StepResult(venue.name, "option_mark_candles", report["underlying"], report["rows"],
+                              error=error, deferred=report["deferred"])
+
+        _run(run, "option_mark_candles", underlying, job)
+
+
 def daily_task(*, root=None, venues: Optional[Sequence[str]] = None,
                underlyings: Sequence[str] = DEFAULT_UNDERLYINGS, series: Sequence[str] = DEFAULT_SERIES,
-               since_days: int = DEFAULT_SINCE_DAYS, trades: bool = True, candles: bool = True, rate: float = 2.0,
+               since_days: int = DEFAULT_SINCE_DAYS, trades: bool = True, candles: bool = True,
+               mark_candles: bool = True, mark_candles_budget: Optional[pd.Timedelta] = MARK_CANDLES_BUDGET,
+               mark_candles_rate: float = MARK_CANDLES_RATE, rate: float = 2.0,
                factories: Optional[Dict[str, Callable]] = None,
                as_of: Optional[pd.Timestamp] = None) -> List[VenueRun]:
     """The ``qmd-options-daily`` task: what the venues forget after a few days, plus Kalshi's recent past."""
@@ -372,6 +405,10 @@ def daily_task(*, root=None, venues: Optional[Sequence[str]] = None,
         run = VenueRun(name)
         if Dataset.OPTION_CONTRACTS in venue.capabilities:
             daily_options(store, venue, underlyings, as_of, run, since=since, trades=trades)
+        if mark_candles and Dataset.OPTION_MARK_CANDLES in venue.capabilities:
+            # Its own client: one request per live contract, paced at mark_candles_rate, not rate.
+            fast = make[name]() if name in make else get_venue(name, rate=mark_candles_rate)
+            daily_mark_candles(store, fast, underlyings, as_of, run, budget=mark_candles_budget)
         if Dataset.BINARY_CONTRACTS in venue.capabilities:
             daily_binaries(store, venue, series, as_of, run, since=since, candles=candles)
         _heartbeat(store, run, as_of, "daily")
@@ -424,12 +461,21 @@ def daily_main(argv: Optional[Sequence[str]] = None) -> int:
                         help="Days of settled Kalshi events and of first option trades (default: 2).")
     parser.add_argument("--no-trades", action="store_true", help="Skip option trades.")
     parser.add_argument("--no-candles", action="store_true", help="Skip Kalshi candles.")
+    parser.add_argument("--no-mark-candles", action="store_true", help="Skip option mark candles (Paradex).")
+    parser.add_argument("--mark-candles-minutes", type=float,
+                        default=MARK_CANDLES_BUDGET.total_seconds() / 60,
+                        help="Time budget of the option mark candles per underlying (default: 3); the "
+                             "contracts left are fetched by the next run.")
+    parser.add_argument("--mark-candles-rate", type=float, default=MARK_CANDLES_RATE,
+                        help="Max requests per second of the option mark candles (default: 10).")
     args = parser.parse_args(argv)
     _logging(args.verbose)
     started = time.monotonic()
     runs = daily_task(root=args.root, venues=args.venues, underlyings=args.underlyings, series=args.series,
                       since_days=args.since_days, trades=not args.no_trades, candles=not args.no_candles,
-                      rate=args.rate)
+                      mark_candles=not args.no_mark_candles,
+                      mark_candles_budget=pd.Timedelta(minutes=args.mark_candles_minutes),
+                      mark_candles_rate=args.mark_candles_rate, rate=args.rate)
     return _report(runs, started)
 
 
@@ -441,6 +487,7 @@ __all__ = [
     "StepResult",
     "VenueRun",
     "daily_main",
+    "daily_mark_candles",
     "daily_task",
     "fill_registry_settlements",
     "main",

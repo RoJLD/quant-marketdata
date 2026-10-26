@@ -136,13 +136,19 @@ Paradex options join the same schemas in the Paradex adapter (they are discovere
 
 ```bash
 qmd-snapshot                 # one pass: BTC/ETH chains (Derive, Deribit, Paradex) + Kalshi quotes
-qmd-options-daily            # before 08:00 UTC: recent expiries, settlements, Kalshi candles, trades
+qmd-options-daily            # before 08:00 UTC: recent expiries, settlements, Kalshi candles, trades,
+                             # Paradex mark candles of the live options
 ```
 
 Schedule `qmd-snapshot` every 15 minutes (:00, :15, :30, :45) plus once at 07:58 UTC, and
 `qmd-options-daily` once a day before 08:00 UTC (each run exits; a failing venue does not stop the others;
 `venues/<venue>/_snapshot_health.json` is the heartbeat). Derive keeps ~11 days of expired contracts and ~12
 days of settlement prices, Paradex no quotes nor candles after expiry: a day not recorded is lost.
+The mark candles step (`--no-mark-candles` to skip) has its own client (`--mark-candles-rate`, default 10
+requests/s: one request per live contract and day, ~1,000 per base) and a budget per underlying
+(`--mark-candles-minutes`, default 3): soonest expiries first, the rest left to the next run (`deferred` in
+the heartbeat). Measured 2026-10-26: the first run (from each listing, 1.67M hourly rows) took 6 min and left
+364 long-dated contracts to the second; then ~2 min per base.
 
 ```python
 from quant_marketdata.venues.contracts import load_chain, load_ladder, load_settlements, settlement_comparison
@@ -216,9 +222,8 @@ settle_expired(venue, store)                              # daily: fixings (30-m
 download_mark_candles(venue, store, "BTC")                # daily: mark candles of the live contracts
 ```
 
-`qmd-snapshot` and `qmd-options-daily` already find Paradex by capability: do not schedule `snapshot_pass`
-next to them (every chain would be recorded twice). `download_mark_candles` is not yet called by
-`qmd-options-daily`.
+`qmd-snapshot` and `qmd-options-daily` already find Paradex by capability (`qmd-options-daily` calls
+`download_mark_candles`): do not schedule `snapshot_pass` next to them (every chain would be recorded twice).
 
 ## Scope
 

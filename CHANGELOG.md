@@ -8,6 +8,25 @@ Quant-lab repo's `docs/PLATFORM.md`.
 
 ## [Unreleased]
 
+### Added
+- **`qmd-options-daily` records Paradex option mark candles** (step `option_mark_candles`, per underlying):
+  hourly mark candles of every live contract and the spot-oracle candles of the base, through
+  `paradex_snapshot.download_mark_candles` (served only until expiry: a day missed was lost). Found by
+  capability (`Dataset.OPTION_MARK_CANDLES`: Paradex only). Bounded: its own client at
+  `--mark-candles-rate` (default 10 requests/s, ~1,000 requests per base and day) and a time budget per
+  underlying, `--mark-candles-minutes` (default 3), after which no fetch starts; failure-isolated: a failing
+  contract fails the step (exit code 1, heartbeat), the other contracts and steps are stored. `--no-mark-candles`
+  skips it. `StepResult.deferred` (heartbeat `deferred`) counts the series a budget left to the next run.
+  Real runs 2026-10-26 into a scratch store (`--venues paradex`): first run 386 s, 1.67M rows, 268 BTC and 96
+  ETH long-dated contracts deferred; second run 286 s, nothing deferred; then 257 s (BTC 1,029 series in 123 s,
+  ETH 931 in 107 s). Every contract covered hourly from its listing hour, no missing hour.
+
+### Changed
+- `paradex_snapshot.download_mark_candles`: a stored series resumes at its last candle, re-reading at least
+  `lookback` (it re-read only the last `lookback`: a run after more than two days off left a hole); the
+  underlying is fetched first, then the contracts by expiry, soonest first; new `budget` (and `clock`)
+  arguments and a `deferred` count in the report.
+
 ## [0.5.0] — 2026-10-25
 
 Live open-interest and price snapshots on the six perp venues, Binance Vision open-interest history (research
