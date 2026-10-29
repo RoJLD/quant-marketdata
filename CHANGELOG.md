@@ -8,6 +8,11 @@ Quant-lab repo's `docs/PLATFORM.md`.
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-10-29
+
+Paradex option mark candles recorded daily by `qmd-options-daily`, bounded and failure-isolated, and a
+resume fix for `download_mark_candles` after days off.
+
 ### Added
 - **`qmd-options-daily` records Paradex option mark candles** (step `option_mark_candles`, per underlying):
   hourly mark candles of every live contract and the spot-oracle candles of the base, through
