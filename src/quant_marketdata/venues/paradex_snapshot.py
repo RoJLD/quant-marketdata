@@ -11,24 +11,27 @@ lives, and an expired contract's fixing can only be asked for by name. Three pas
   ``markets/settlement-price`` request per (base, expiry), into ``venues/paradex/settlements/<index>.parquet``
   and the registry (``settlement_price`` = the TWAP, ``settlement_source``, ``settlement_seen_at``).
 - ``download_mark_candles`` (daily, before expiries): mark candles of every live contract of an underlying and
-  the underlying (spot oracle) candles once per base, into monthly partitions, re-reading ``lookback`` so a
-  short gap is closed. A first run starts at each contract's listing (ETH 2026-10-19: 958 contracts, 807k
-  hourly rows, 193 s); then about one request per contract and day.
+  the underlying (spot oracle) candles once per base, into monthly partitions; a stored series resumes at its
+  last candle (re-reading at least ``lookback``), so a run after days off closes the gap. A first run starts
+  at each contract's listing (ETH 2026-10-19: 958 contracts, 807k hourly rows, 193 s); then about one
+  request per contract and day. A ``budget`` bounds a run: soonest expiries first, the rest are left to the
+  next run (``deferred``).
 
 Each step of a pass is independent: a failure is reported in the returned summary (and the heartbeat), the
 other steps still run.
 
 ``qmd-snapshot`` and ``qmd-options-daily`` (``venues.snapshot``) find Paradex by capability and already do the
-listing, chain and fixing steps: do **not** schedule ``snapshot_pass`` next to ``qmd-snapshot`` (every chain
-would be recorded twice). These functions are for running Paradex alone; ``settle_expired`` (fixings of
-registry names older than ``markets/history`` reaches) and ``download_mark_candles`` cover what the daily task
-does not.
+listing, chain and fixing steps, and ``qmd-options-daily`` calls ``download_mark_candles``: do **not** schedule
+``snapshot_pass`` next to ``qmd-snapshot`` (every chain would be recorded twice). These functions are for
+running Paradex alone; ``settle_expired`` (fixings of registry names older than ``markets/history`` reaches)
+covers what the daily task does not.
 """
 
 from __future__ import annotations
 
+import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import pandas as pd
 
@@ -123,41 +126,55 @@ def settle_expired(venue: Any, store: ContractStore, *, as_of: Optional[pd.Times
 
 def download_mark_candles(venue: Any, store: ContractStore, underlying: str, *, resolution: str = "1h",
                           lookback: pd.Timedelta = CANDLE_LOOKBACK, as_of: Optional[pd.Timestamp] = None,
-                          workers: int = CANDLE_WORKERS) -> Dict[str, Any]:
+                          workers: int = CANDLE_WORKERS, budget: Optional[pd.Timedelta] = None,
+                          clock: Callable[[], float] = time.monotonic) -> Dict[str, Any]:
     """Mark candles of the live contracts of one base (and its underlying candles, once), merged into
     ``option_mark_candles/<UNDERLYING>/<resolution>/<YYYY-MM>``. A contract never stored starts at its
-    listing; the others re-read the last ``lookback``."""
+    listing; a stored one resumes at its last candle, re-reading at least the last ``lookback`` (the last
+    bar was partial). Once ``budget`` is spent no fetch starts: the underlying goes first, then the soonest
+    expiries; the series left are counted in ``deferred`` and fetched by the next run while still listed."""
     as_of = _now() if as_of is None else pd.Timestamp(as_of)
+    deadline = None if budget is None else clock() + budget.total_seconds()
     key = make_underlying_id(underlying, "USD")
     live = venue.resolved_contracts(underlying)
     live = live[(live["status"] == "active") & (live["expiry"] > as_of)]
+    live = live.sort_values(["expiry", "venue_symbol"], kind="stable")
     stored = store.read_monthly(VENUE, Dataset.OPTION_MARK_CANDLES, key, resolution=resolution,
                                 start=(as_of - lookback).strftime("%Y-%m"))
-    seen = set(stored["venue_symbol"]) if not stored.empty else set()
+    last = stored.groupby("venue_symbol")["ts"].max().to_dict() if not stored.empty else {}
     report: Dict[str, Any] = {"venue": VENUE, "underlying": key, "contracts": len(live), "rows": 0,
-                              "errors": {}}
+                              "deferred": 0, "errors": {}}
 
-    def fetch(row) -> pd.DataFrame:
-        start = as_of - lookback if row.venue_symbol in seen else row.listed_at
-        return venue.option_mark_candles(row.venue_symbol, resolution, start, as_of)
+    def start_of(series: str, listed_at: pd.Timestamp) -> pd.Timestamp:
+        return min(last[series], as_of - lookback) if series in last else listed_at
 
+    def fetch(symbol: str, start: pd.Timestamp, price: str) -> Optional[pd.DataFrame]:
+        if deadline is not None and clock() > deadline:
+            return None
+        return venue.option_mark_candles(symbol, resolution, start, as_of, price=price)
+
+    jobs = []  # (series, contract symbol, start, price kind)
+    if not live.empty:  # the spot oracle: one series per base, keyed by the underlying id
+        first = live.sort_values("listed_at", kind="stable").iloc[0]
+        jobs.append((key, first["venue_symbol"], start_of(key, first["listed_at"]), "underlying"))
+    jobs += [(row.venue_symbol, row.venue_symbol, start_of(row.venue_symbol, row.listed_at), "mark")
+             for row in live.itertuples()]
     frames: List[pd.DataFrame] = []
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-        futures = {pool.submit(fetch, row): row.venue_symbol for row in live.itertuples()}
-        for future, symbol in futures.items():
+        futures = {pool.submit(fetch, symbol, start, price): (series, price)
+                   for series, symbol, start, price in jobs}
+        for future, (series, price) in futures.items():
             try:
-                frames.append(future.result())
+                frame = future.result()
             except Exception as exc:  # noqa: BLE001 -- one contract must not stop the others
-                report["errors"][symbol] = _error(exc)
-    if not live.empty:  # the spot oracle: one series per base, keyed by the underlying id
-        first = live.sort_values("listed_at").iloc[0]
-        start = as_of - lookback if key in seen else first["listed_at"]
-        try:
-            frames.append(venue.option_mark_candles(first["venue_symbol"], resolution, start, as_of,
-                                                    price="underlying").assign(venue_symbol=key,
-                                                                               contract_id=None))
-        except Exception as exc:  # noqa: BLE001
-            report["errors"]["underlying"] = _error(exc)
+                report["errors"]["underlying" if price == "underlying" else series] = _error(exc)
+                continue
+            if frame is None:
+                report["deferred"] += 1
+            elif price == "underlying":
+                frames.append(frame.assign(venue_symbol=key, contract_id=None))
+            else:
+                frames.append(frame)
     frames = [f for f in frames if not f.empty]
     if frames:
         frame = pd.concat(frames, ignore_index=True)

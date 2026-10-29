@@ -9,6 +9,7 @@ import pytest
 from test_venues_deribit import FakeClient as DeribitClient
 from test_venues_derive import FakeClient as DeriveClient
 from test_venues_kalshi import FakeClient as KalshiClient
+from test_venues_paradex_options import FakeParadexOptions
 
 from quant_marketdata.venues.contracts import (
     ContractStore,
@@ -21,8 +22,15 @@ from quant_marketdata.venues.contracts import (
 from quant_marketdata.venues.deribit import DeribitVenue
 from quant_marketdata.venues.derive import DeriveVenue
 from quant_marketdata.venues.kalshi import KalshiVenue
+from quant_marketdata.venues.paradex import ParadexVenue
 from quant_marketdata.venues.schema import Dataset
-from quant_marketdata.venues.snapshot import daily_task, main, snapshot_pass, venues_with
+from quant_marketdata.venues.snapshot import (
+    daily_main,
+    daily_task,
+    main,
+    snapshot_pass,
+    venues_with,
+)
 
 FACTORIES = {
     "derive": lambda: DeriveVenue(DeriveClient(), clock=lambda: pd.Timestamp("2026-10-18 09:20")),
@@ -128,6 +136,65 @@ def test_daily_task_settlements_and_the_0800_index_gap(tmp_path):
                as_of=later, trades=False)
     again = load_settlements(["deribit:btc_usd"], root=tmp_path)
     assert len(again) == 5 and again["first_seen_at"].max() < later
+
+
+PARADEX_AS_OF = pd.Timestamp("2026-10-18 16:00")  # after the recorded mark candles (13:00-15:00)
+
+
+@pytest.fixture
+def paradex_clock(monkeypatch):
+    import quant_marketdata.venues.paradex_options as options
+    import quant_marketdata.venues.paradex_snapshot as passes
+
+    monkeypatch.setattr(options, "_now", lambda: PARADEX_AS_OF)
+    monkeypatch.setattr(passes, "_now", lambda: PARADEX_AS_OF)
+
+
+class _NoKlines(FakeParadexOptions):
+    def get(self, path, params=None):
+        if path == "markets/klines":
+            raise RuntimeError("klines down")
+        return super().get(path, params)
+
+
+def _paradex_daily(root, client=FakeParadexOptions, **kwargs):
+    runs = daily_task(root=root, venues=["paradex"], underlyings=["BTC"], series=[], as_of=PARADEX_AS_OF,
+                      factories={"paradex": lambda: ParadexVenue(client())}, **kwargs)
+    return runs[0], [s for s in runs[0].steps if s.step == "option_mark_candles"]
+
+
+def test_daily_task_records_paradex_mark_candles(tmp_path, paradex_clock):
+    run, candles = _paradex_daily(tmp_path)
+    assert run.ok, [s for s in run.steps if s.error]
+    assert [s.step for s in run.steps] == ["option_registry", "settlements", "option_trades", "option_mark_candles"]
+    assert (candles[0].key, candles[0].rows, candles[0].deferred) == ("BTC-USD", 21, 0)  # 6 contracts + spot
+    store = ContractStore.at(tmp_path)
+    stored = store.read_monthly("paradex", Dataset.OPTION_MARK_CANDLES, "BTC-USD", resolution="1h")
+    assert stored["venue_symbol"].nunique() == 7 and stored.loc[stored["price_type"] == "mark", "contract_id"].notna().all()
+    heartbeat = json.loads(store.heartbeat_path("paradex").read_text())
+    assert heartbeat["ok"] and heartbeat["steps"][-1]["step"] == "option_mark_candles"
+    assert _paradex_daily(tmp_path, mark_candles=False)[1] == []
+
+
+def test_daily_mark_candles_are_bounded_and_failure_isolated(tmp_path, paradex_clock):
+    run, candles = _paradex_daily(tmp_path, mark_candles_budget=pd.Timedelta(0))
+    assert run.ok and (candles[0].rows, candles[0].deferred) == (0, 7)  # all left to the next run
+    run, candles = _paradex_daily(tmp_path, client=_NoKlines)
+    assert not run.ok and all(s.error is None for s in run.steps if s.step != "option_mark_candles")
+    assert candles[0].error.startswith("7 of 7 series failed, e.g. ") and "klines down" in candles[0].error
+    assert not json.loads(ContractStore.at(tmp_path).heartbeat_path("paradex").read_text())["ok"]
+
+
+def test_daily_command_line_passes_the_mark_candle_options(tmp_path, monkeypatch):
+    import quant_marketdata.venues.snapshot as snapshot
+
+    seen = {}
+    monkeypatch.setattr(snapshot, "daily_task", lambda **kwargs: seen.update(kwargs) or [])
+    assert daily_main(["--root", str(tmp_path), "--mark-candles-minutes", "1.5", "--mark-candles-rate", "5"]) == 0
+    assert seen["mark_candles"] and seen["mark_candles_budget"] == pd.Timedelta(seconds=90)
+    assert seen["mark_candles_rate"] == 5 and seen["rate"] == 2
+    daily_main(["--root", str(tmp_path), "--no-mark-candles"])
+    assert not seen["mark_candles"] and seen["mark_candles_budget"] == pd.Timedelta(minutes=3)
 
 
 def test_command_line_reports_failures(tmp_path, monkeypatch, capsys):
