@@ -1,0 +1,11 @@
+{
+  "extraKnownMarketplaces": {
+    "robin-brain": {
+      "source": { "source": "github", "repo": "RoJLD/claude-brain" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "quant-platform@robin-brain": true
+  }
+}
