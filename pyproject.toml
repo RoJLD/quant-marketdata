@@ -31,6 +31,8 @@ dependencies = ["pandas>=2.0"]
 
 [project.optional-dependencies]
 live = ["ccxt>=4.2"]
+# The ccxt-backed perp venues (Bybit, OKX, Bitget, Gate): conventions checked with ccxt 4.5.52.
+ccxt = ["ccxt>=4.5.52"]
 store = ["pyarrow>=14"]
 stream = ["pyarrow>=14", "websockets>=12"]
 dev = ["pytest>=7", "ruff>=0.4", "pyarrow>=14", "websockets>=12"]

@@ -49,6 +49,25 @@ next registry update. A declared session value with no mapping is reported as un
 Symbols that stay unresolved by decision (``UNRESOLVED`` in ``registry_overrides``) are reported with the
 reason of that decision; non-ASCII names (the Chinese-named memecoins of Binance and Aster) are reported as
 such: there is no ticker to key an id on, and the same name on two venues is not proof of the same token.
+An adapter may also mark a market unresolved itself (an ``unresolved_reason`` column in its snapshot): the
+venue says the market is not crypto without saying its class (Bitget ``isRwa``). An override still wins.
+
+The ccxt-backed CEX venues (checked on 2026-10-30 payloads):
+
+- Bybit and Bitget name their USDT books ``<BASE>USDT`` and their USDC books ``<BASE>PERP`` (``BTCPERP``:
+  ``BTC-USDC-PERP``, a second stablecoin book as on Binance); OKX ``<BASE>-USDT-SWAP``, Gate ``<BASE>_USDT``
+  (USDT only, on both). Scaled bases go up to ``10000`` (Bybit ``10000SATS``) and ``10000000`` (Bybit
+  ``10000000AIDOGE``, delisted); Bybit's ``SHIB1000`` is a suffix (override).
+- Bybit (``symbolType``), OKX (``instCategory``, ``ruleType=pre_market``) and Gate (``contract_type``,
+  ``is_pre_market``) declare which perps are stocks, ETFs, indices, commodities or FX; OKX and Gate put ETFs
+  under "stocks" (equity, as Binance's ``EQUITY``). Bitget only flags them (``isRwa``): those are unresolved
+  unless an override classifies them.
+- **Ids carry no asset class**, and stock tickers clash with crypto tickers: Gate ``CAT_USDT`` and Bitget
+  ``CATUSDT`` are Caterpillar while ``CAT-USD-PERP`` is the Simon's Cat memecoin on Binance and Bybit
+  (``1000CAT``). Bybit renames its clashing stocks (``CATSTOCKUSDT``, ``NUSTOCKUSDT``); the others do not.
+  ``class_conflicts`` reports every id that is crypto on one venue and not on another (``qmd-download`` logs
+  them); the ones known on 2026-10-30 are unresolved by decision on the venue that brought the clash, the
+  class declared or decided on the six earlier venues standing.
 """
 
 from __future__ import annotations
@@ -62,7 +81,7 @@ import pandas as pd
 from quant_marketdata.venues.registry_overrides import OVERRIDES, UNRESOLVED
 from quant_marketdata.venues.schema import INSTRUMENT_COLUMNS
 
-FIAT = frozenset({"USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "HKD", "KRW", "CNH", "SGD"})
+FIAT = frozenset({"USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "HKD", "KRW", "CNH", "SGD", "BRL"})
 REGISTRY_COLUMNS = INSTRUMENT_COLUMNS + ["mapping_source"]
 # Id suffix of each restricted session; "24x7" (and an undeclared session) adds none.
 SESSION_TAGS = {"24x5": "24X5", "no-overnight": "NOOVERNIGHT"}
@@ -70,8 +89,8 @@ CONTINUOUS = "24x7"
 EXTENDED_BATCH = "_24_5"
 _SCALED = re.compile(r"^(1000|1M|k)([A-Z0-9]+)$")
 # Longest prefix first, and the scaled base must start with a letter: 1000000MOG is MOG x 1e6, 1INCH is 1INCH.
-_PREFIXED = re.compile(r"^(1000000|1000|1M|k)([A-Z][A-Z0-9]*)$")
-_MULTIPLIERS = {"1000000": 1e6, "1M": 1e6, "1000": 1000.0, "k": 1000.0}
+_PREFIXED = re.compile(r"^(10000000|1000000|10000|1000|1M|k)([A-Z][A-Z0-9]*)$")
+_MULTIPLIERS = {"10000000": 1e7, "1000000": 1e6, "1M": 1e6, "10000": 1e4, "1000": 1000.0, "k": 1000.0}
 _IDENTITY = ("base", "quote", "multiplier", "asset_class", "underlying_ref")
 
 Parsed = Dict[str, object]
@@ -182,13 +201,49 @@ def parse_derive(symbol: str) -> Optional[Parsed]:
     return {"base": base, "quote": "USD", "multiplier": 1.0, "asset_class": "crypto"}
 
 
+def _cex(symbol: str, quotes: Dict[str, str]) -> Optional[Parsed]:
+    """``_quoted`` plus FX pairs as bases (``EURUSDUSDT`` -> EUR/USD); the class comes from the venue."""
+    parsed = _quoted(symbol, quotes)
+    if parsed is not None and parsed["multiplier"] == 1.0:
+        fx = _fiat_pair(str(parsed["base"]))
+        if fx is not None:
+            return {**fx, "asset_class": None}
+    return parsed
+
+
+def parse_bybit(symbol: str) -> Optional[Parsed]:
+    """Bybit linear perps: ``BTCUSDT`` -> BTC/USD, ``BTCPERP`` (the USDC book) -> BTC/USDC, ``10000SATSUSDT``
+    -> SATS x1e4. The class comes from the venue (``symbolType``)."""
+    return _cex(symbol, {"USDT": "USD", "PERP": "USDC"})
+
+
+def parse_bitget(symbol: str) -> Optional[Parsed]:
+    """Bitget USDT-M and USDC-M perps: same names as Bybit (``BTCUSDT``, ``BTCPERP``, ``1MBABYDOGEUSDT``)."""
+    return _cex(symbol, {"USDT": "USD", "PERP": "USDC"})
+
+
+def parse_okx(symbol: str) -> Optional[Parsed]:
+    """OKX swaps: ``BTC-USDT-SWAP`` -> BTC/USD (``-USDC-SWAP``: BTC/USDC); coin-margined ``-USD-SWAP`` are
+    left out by the adapter. OKX lists no scaled bases (the contract value carries the scale)."""
+    return _cex(symbol, {"-USDT-SWAP": "USD", "-USDC-SWAP": "USDC"})
+
+
+def parse_gate(symbol: str) -> Optional[Parsed]:
+    """Gate USDT futures: ``BTC_USDT`` -> BTC/USD. The class comes from the venue (``contract_type``)."""
+    return _cex(symbol, {"_USDT": "USD", "_USDC": "USDC"})
+
+
 PARSERS: Dict[str, Callable[[str], Optional[Parsed]]] = {
     "aster": parse_aster,
     "binance": parse_binance,
+    "bitget": parse_bitget,
+    "bybit": parse_bybit,
     "derive": parse_derive,
     "extended": parse_extended,
+    "gate": parse_gate,
     "hyperliquid": parse_hyperliquid,
     "lighter": parse_lighter,
+    "okx": parse_okx,
     "paradex": parse_paradex,
 }
 
@@ -242,6 +297,9 @@ def resolve(venue: str, snapshot: pd.DataFrame,
         override = venue_overrides.get(symbol)
         if override is None and symbol in venue_decided:
             unresolved.append({"venue": venue, "venue_symbol": symbol, "reason": venue_decided[symbol]})
+            continue
+        if override is None and _present(row.get("unresolved_reason")):  # declared by the adapter
+            unresolved.append({"venue": venue, "venue_symbol": symbol, "reason": row["unresolved_reason"]})
             continue
         parsed = parser(symbol) if parser else None
         if override is not None:
@@ -311,17 +369,38 @@ def update_registry(existing: pd.DataFrame, build: RegistryBuild, venue: str,
     return merged.reindex(columns=REGISTRY_COLUMNS).sort_values(["venue", "venue_symbol"]).reset_index(drop=True)
 
 
+def class_conflicts(registry: pd.DataFrame) -> pd.DataFrame:
+    """Rows of the canonical ids that are crypto on one venue and something else on another (a memecoin and a
+    stock sharing a ticker, see the module docstring): ``instrument_id``, ``venue``, ``venue_symbol``,
+    ``asset_class``, ``mapping_source``. Consumers that pair venues by id would compare two underlyings.
+
+    Disagreements between non-crypto classes (an ETF that one venue calls equity, a pre-IPO company that one
+    calls private and another equity) are granularity, not two underlyings: they are not reported."""
+    columns = ["instrument_id", "venue", "venue_symbol", "asset_class", "mapping_source"]
+    if registry.empty:
+        return pd.DataFrame(columns=columns)
+    rows = registry[registry["instrument_id"].notna()].reindex(columns=columns)
+    crypto = (rows["asset_class"] == "crypto").groupby(rows["instrument_id"])
+    clashing = rows[rows["instrument_id"].isin(crypto.any()[crypto.any() & ~crypto.all()].index)]
+    return clashing.sort_values(["instrument_id", "venue"]).reset_index(drop=True)
+
+
 __all__ = [
     "PARSERS",
     "REGISTRY_COLUMNS",
     "RegistryBuild",
     "SESSION_TAGS",
+    "class_conflicts",
     "parse_aster",
     "parse_binance",
+    "parse_bitget",
+    "parse_bybit",
     "parse_derive",
     "parse_extended",
+    "parse_gate",
     "parse_hyperliquid",
     "parse_lighter",
+    "parse_okx",
     "parse_paradex",
     "resolve",
     "session_suffix",

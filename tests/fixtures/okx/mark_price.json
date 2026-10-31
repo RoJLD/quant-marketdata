@@ -1,0 +1,14 @@
+{
+"code":"0",
+"data":[
+{"instId":"CHIP-USDT-SWAP","instType":"SWAP","markPx":"0.04251","ts":"1793455439058"},
+{"instId":"OPENAI-USDT-SWAP","instType":"SWAP","markPx":"135.99","ts":"1793455439058"},
+{"instId":"XAU-USDT-SWAP","instType":"SWAP","markPx":"3888.5","ts":"1793455439058"},
+{"instId":"BTC-USDT-SWAP","instType":"SWAP","markPx":"77481.5","ts":"1793455439058"},
+{"instId":"ETH-USDT-SWAP","instType":"SWAP","markPx":"2250.17","ts":"1793455439058"},
+{"instId":"ON-USDT-SWAP","instType":"SWAP","markPx":"70.93","ts":"1793455439058"},
+{"instId":"AAPL-USDT-SWAP","instType":"SWAP","markPx":"345.53","ts":"1793455439058"},
+{"instId":"US500-USDT-SWAP","instType":"SWAP","markPx":"7577.5","ts":"1793455439058"}
+],
+"msg":""
+}

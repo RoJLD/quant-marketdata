@@ -5,7 +5,8 @@ The honest cost-realism layer between a backtest and real fills (models, not rea
 - paper_execution: book-walking VWAP fills, slippage vs mid, modeled-realized carry friction,
 - market_impact: sqrt-law beyond-book impact + capacity (breakeven size / max turnover / feasibility),
 - live_quotes: observed books/spreads via ccxt (lazy; the ``live`` extra) + HL urllib fallback.
-pandas core; ccxt only for live_quotes.
+pandas core; ccxt only for live_quotes and the ccxt-backed venues (``venues.ccxt_venue``: Bybit, OKX, Bitget,
+Gate; the ``ccxt`` extra), both imported lazily.
 """
 from quant_marketdata.binance_funding import load_funding_rate as load_binance_funding
 from quant_marketdata.carry_cost import (

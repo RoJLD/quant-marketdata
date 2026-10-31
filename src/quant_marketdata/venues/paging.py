@@ -78,9 +78,71 @@ def forward_fetch(
     return frame[~frame.index.duplicated(keep="last")].sort_index()
 
 
+def backward_fetch(
+    fetch_before: Callable[[int], pd.DataFrame],
+    start: int,
+    end: int,
+    page_size: Optional[int] = None,
+    *,
+    empty_step: Optional[int] = None,
+    unit: str = "ms",
+) -> pd.DataFrame:
+    """Cursor pagination for APIs that return the **newest** points up to an end time (Bybit ``endTime``,
+    OKX ``after``, Gate ``to``).
+
+    ``fetch_before(cursor)`` returns a time-indexed page of points stamped at or before ``cursor``; the next
+    cursor is one ``unit`` before its oldest timestamp. Stops once the cursor falls before ``start``, on a short
+    page (fewer than ``page_size`` points; ``None``: pages are time windows whose length says nothing), or on a
+    page that does not move back. An empty page ends the walk, unless ``empty_step`` is given: the cursor then
+    steps that far back (a venue serving fixed time windows can hold a hole longer than one window).
+    """
+    pages, cursor = [], end
+    while cursor >= start:
+        page = fetch_before(cursor)
+        if page.empty:
+            if empty_step is None:
+                break
+            cursor -= empty_step
+            continue
+        pages.append(page)
+        nxt = int(page.index.min().value // pd.Timedelta(1, unit=unit).value) - 1
+        if (page_size is not None and len(page) < page_size) or nxt >= cursor:
+            break
+        cursor = nxt
+    return _concat(pages)
+
+
+def numbered_fetch(
+    fetch_page: Callable[[int], pd.DataFrame],
+    start: pd.Timestamp,
+    page_size: int,
+    *,
+    max_pages: int = 1000,
+) -> pd.DataFrame:
+    """Page-number pagination, newest first (Bitget ``pageNo``): pages 1, 2, ... until a short or empty page, a
+    page reaching back to ``start``, or ``max_pages`` (a guard against a venue that never stops)."""
+    pages = []
+    for number in range(1, max_pages + 1):
+        page = fetch_page(number)
+        if page.empty:
+            break
+        pages.append(page)
+        if len(page) < page_size or page.index.min() <= start:
+            break
+    return _concat(pages)
+
+
+def _concat(pages: list) -> pd.DataFrame:
+    if not pages:
+        return pd.DataFrame()
+    frame = pd.concat(pages)
+    return frame[~frame.index.duplicated(keep="last")].sort_index()
+
+
 def window_count(start: int, end: int, step: int, cap: int) -> int:
     """Number of points of period ``step`` in ``[start, end]`` (bounds inclusive), capped at ``cap``."""
     return max(1, min(cap, (end - start) // step + 1))
 
 
-__all__ = ["first_non_empty", "forward_fetch", "paged_fetch", "window_count", "windows"]
+__all__ = ["backward_fetch", "first_non_empty", "forward_fetch", "numbered_fetch", "paged_fetch",
+           "window_count", "windows"]

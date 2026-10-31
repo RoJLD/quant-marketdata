@@ -27,6 +27,8 @@ market reaction — a necessary-not-sufficient floor, not a substitute for real 
 pip install "quant-marketdata @ git+https://github.com/RoJLD/quant-marketdata.git@v0.1.0"
 # with the live ccxt adapter:
 pip install "quant-marketdata[live] @ git+https://github.com/RoJLD/quant-marketdata.git@v0.1.0"
+# with the ccxt-backed venues (Bybit, OKX, Bitget, Gate):
+pip install "quant-marketdata[ccxt,store] @ git+https://github.com/RoJLD/quant-marketdata.git@<tag>"
 ```
 
 ## Example
@@ -55,6 +57,10 @@ Quant-lab spec `2026-10-15-multi-venue-data-layer-design.md`):
 | `aster` | `BTCUSDT` | per symbol, 8h/4h/2h/1h | funding, candles, mark candles, specs |
 | `paradex` (perps + options) | `BTC-USD-PERP`, `kPEPE-USD-PERP` | continuous; hourly events from the funding index | funding (from 2024-03-12), candles (1m-1h), mark candles, specs; options (see below) |
 | `derive` (perps + options) | `BTC-PERP` | continuous; hourly rate, ~12 days of history | funding, specs; options (see below) |
+| `bybit` (linear, via ccxt) | `BTCUSDT`, `BTCPERP` (USDC) | per symbol, 8h/4h/2h/1h, since listing | funding, specs, OI (one side), prices; delisted perps listed |
+| `okx` (swaps, via ccxt) | `BTC-USDT-SWAP` | per symbol, 8h/4h/2h/1h, **~94-day window** | funding, specs, OI, prices |
+| `bitget` (USDT-M + USDC-M, via ccxt) | `BTCUSDT`, `BTCPERP` (USDC) | per symbol, 8h/4h/1h, **90-day window** | funding, specs, OI, prices |
+| `gate` (USDT futures, via ccxt) | `BTC_USDT` | per symbol, 8h/4h/1h, since listing | funding, specs, OI (both sides), prices |
 
 Each adapter's module docstring lists the API quirks it absorbs. Paradex accrues funding continuously:
 its funding index is sampled at every whole hour and each hour becomes one settlement-equivalent event,
@@ -73,9 +79,13 @@ its funding index is sampled at every whole hour and each hour becomes one settl
   fetches what is new.
 - **Live snapshots** (not stored): `order_book(symbol)` (`Dataset.BOOK`), `open_interest(symbols)`
   (`Dataset.OPEN_INTEREST`) and `prices(symbols)` (`Dataset.PRICES`: mark, index, last) on every perp adapter. Open interest is published as each venue counts it (Lighter,
-  Hyperliquid, Binance, Aster, Extended: one side; Paradex: both sides, longs + shorts) with its
-  `oi_convention`; compare venues on `one_side_usd(snapshot)`. Binance and Aster serve one symbol per
-  request, the others every market in one.
+  Hyperliquid, Binance, Aster, Extended, Bybit, OKX, Bitget: one side; Paradex, Gate: both sides, longs +
+  shorts) with its `oi_convention`; compare venues on `one_side_usd(snapshot)`. Binance and Aster serve one
+  symbol per request, the others every market in one (Bitget: one per product type).
+- **Download** (`qmd-download`): `--venues a b c` runs several venues, a failing one not stopping the others;
+  a market delisted before the start of its series is skipped; a venue serving a rolling window
+  (`funding_window`: OKX, Bitget) logs a stored series that ends before it; `--raw-backfill` first merges the
+  raw funding archive (below); ids with crypto and non-crypto rows across venues are logged.
 
 ```bash
 pip install "quant-marketdata[store]"   # pyarrow for the Parquet store
@@ -90,6 +100,53 @@ btc = load_funding("BTC-USD-PERP")        # every venue's funding events, with a
 ```
 
 Live API tests are opt-in: `pytest -m live`.
+
+### CEX through ccxt: Bybit, OKX, Bitget, Gate (`quant_marketdata.venues.ccxt_venue`)
+
+One generic venue backed by ccxt (`pip install "quant-marketdata[ccxt]"`; ccxt is imported only when a venue first
+talks to its exchange, so the core stays pandas-only) and one module per exchange whose overrides were checked on
+raw payloads on 2026-10-30 and frozen in recorded fixtures (`tests/fixtures/{bybit,okx,bitget,gate,evidence}`).
+ccxt is the transport (its throttle, plus this package's limiter at `--rate`, capped per venue) and the market
+loader; raw endpoints go through ccxt's implicit API so each payload is read as served. Its unified methods are the
+fallback for a future venue, not what these four use where the inventory flagged a convention:
+
+- **Funding history** is paged with each venue's own parameters, because ccxt's `since` is ignored or misread:
+  Bybit `endTime`, OKX `after`, Bitget page numbers, Gate `to` (30 days per request). Bybit and Gate serve it since
+  listing; **OKX (~94 days) and Bitget (90 days) only over a rolling window** (`funding_window`): every day not
+  collected is lost, see the raw archive below. Rates are fractions per interval, positive = longs pay (each
+  venue's current rates correlate with Binance's at 0.92-0.97 on 450-720 shared symbols, no opposite sign beyond
+  2 bp); `interval_h` comes from the gap to the previous settlement (symbols move between 8, 4, 2 and 1 h).
+- **Open interest** in one request per venue (Bitget: per product type): Bybit `singleOpenInterest` (its
+  `openInterest`, which ccxt reads, is both sides), OKX `oiCcy` with its published `oiUsd`, Bitget `holdingAmount`,
+  Gate `total_size` x `quanto_multiplier`, which **counts both sides** (twice the contracts' long-side
+  `position_size`), stored as published with `oi_convention="both_sides"`. Compare on `one_side_usd`.
+- **Prices**: mark, index and last (OKX: three endpoints, its ccxt ticker has neither mark nor index).
+- **Registry**: USDC books `<BASE>PERP` (Bybit, Bitget) are `BTC-USDC-PERP`; scaled bases up to `10000000`; the
+  classes Bybit (`symbolType`), OKX (`instCategory`) and Gate (`contract_type`) declare; Bitget's `isRwa` perps
+  without a class stay unresolved unless an override classifies them; Bybit's delisted perps are listed with their
+  delisting time. **Ids carry no asset class**: `registry.class_conflicts(registry)` reports ids that are crypto on
+  one venue and something else on another (a memecoin and a stock sharing a ticker); `qmd-download` logs them.
+
+```bash
+pip install "quant-marketdata[ccxt,store]"
+qmd-download --venues bybit okx bitget gate --datasets funding --since 2026-10-27 --rate 5
+```
+
+**Data terms.** None of these venues grants commercial use of its public data (OKX: "personal, non-commercial
+trading"): read Quant-lab's `docs/reference/venue_inventory_2026-10.md` §4 and its decision log before any use
+beyond research.
+
+### Raw funding archive backfill (`quant_marketdata.venues.raw_archive`)
+
+Quant-lab's `scripts/collect_window_funding.py` (task `quant-window-collect`) archives the funding rows OKX and
+Bitget serve before they leave their window, as served, under `<root>/_raw/<venue>/funding/<instrument>.parquet`.
+`backfill_funding(venue, root=...)` (or `qmd-download --venue okx --raw-backfill`) reads that archive with the
+venue's own parser, merges it into `venues/<venue>/funding/` (a stored row wins at the same time) and recomputes
+the intervals over the union; it never writes the archive and makes no request.
+
+```bash
+qmd-download --venues okx bitget --datasets funding --raw-backfill
+```
 
 ### Dated contracts: options and prediction markets (`quant_marketdata.venues.contracts`)
 
