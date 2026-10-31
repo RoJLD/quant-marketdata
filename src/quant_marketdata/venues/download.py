@@ -1,10 +1,15 @@
 """Incremental download of one venue's history into the store, and its command line.
 
     python -m quant_marketdata.venues.download --venue lighter --symbols BTC ETH --datasets funding candles
+    python -m quant_marketdata.venues.download --venues bybit okx bitget gate --datasets funding --since 2026-10-27
 
 Each series resumes from its last stored timestamp (that row is fetched again: the latest candle may have
 been incomplete). Long ranges are fetched in chunks merged to disk one by one, so an interrupted run keeps
-its progress. Delisted markets are included by default to avoid survivorship bias.
+its progress. Delisted markets are included by default to avoid survivorship bias; a market delisted before
+the start of its series is skipped (nothing to fetch). A venue serving its funding over a rolling window
+(``funding_window``: OKX, Bitget) cannot fill a series that resumes before the window: the lost span is
+logged, and ``--raw-backfill`` first merges what the raw archive holds (``venues.raw_archive``). Ids that carry
+two asset classes across venues (``registry.class_conflicts``) are logged after each registry update.
 """
 
 from __future__ import annotations
@@ -18,8 +23,8 @@ from typing import Callable, List, Optional, Sequence
 
 import pandas as pd
 
-from quant_marketdata.venues.base import Venue, get_venue
-from quant_marketdata.venues.registry import resolve, update_registry
+from quant_marketdata.venues.base import WINDOW_MARGIN, Venue, get_venue
+from quant_marketdata.venues.registry import class_conflicts, resolve, update_registry
 from quant_marketdata.venues.schema import Dataset
 from quant_marketdata.venues.store import VenueStore
 
@@ -52,6 +57,7 @@ class DownloadPlan:
     active_only: bool = False
     specs: bool = True
     registry: bool = True
+    raw_backfill: bool = False  # merge <root>/_raw/<venue>/funding first (venues.raw_archive)
 
 
 def _now() -> pd.Timestamp:
@@ -77,14 +83,23 @@ def download_series(
     end: pd.Timestamp,
     step_s: int,
     resolution: Optional[str] = None,
+    served_from: Optional[pd.Timestamp] = None,
 ) -> DownloadResult:
-    """Fetch ``[resume point, end]`` chunk by chunk and merge each chunk into the store."""
+    """Fetch ``[resume point, end]`` chunk by chunk and merge each chunk into the store.
+
+    ``served_from``: the start of the venue's rolling window (a floor: the venue may serve a little more); a
+    stored series that ends before it may have lost the span in between, which is logged as a warning. The
+    start is not clamped: the venue's pager stops where its history does."""
     path = store.path(venue.name, dataset, symbol, resolution)
     label = dataset.value if resolution is None else f"{dataset.value}/{resolution}"
     before = store.row_count(path)
     last = store.last_timestamp(path)
     if last is not None:
         start = last
+        if served_from is not None and last < served_from:
+            logger.warning("%s %s %s: stored until %s, older than the venue's window (from about %s): what it "
+                           "no longer serves is lost unless a raw archive holds it (--raw-backfill)",
+                           venue.name, symbol, label, last, served_from)
     span = pd.Timedelta(seconds=step_s * CHUNK_POINTS)
     for a, b in _chunks(start, end, span):
         chunk = fetch(a, b)
@@ -129,8 +144,18 @@ def download_venue(plan: DownloadPlan, *, root=None, rate: float = 2.0,
                     len(build.unresolved))
         for row in build.unresolved.to_dict("records"):
             logger.warning("Unresolved %s %s: %s", row["venue"], row["venue_symbol"], row["reason"])
+        conflicts = class_conflicts(registry)
+        touched = conflicts[conflicts["instrument_id"].isin(
+            conflicts.loc[conflicts["venue"] == venue.name, "instrument_id"])]
+        for instrument, group in touched.groupby("instrument_id"):
+            logger.warning("Id %s carries several asset classes: %s", instrument, ", ".join(
+                f"{r.venue} {r.venue_symbol} {r.asset_class}" for r in group.itertuples()))
     if plan.specs and Dataset.SPECS in venue.capabilities:
         results.append(snapshot_specs(store, venue, end))
+    if plan.raw_backfill and Dataset.FUNDING in plan.datasets:
+        from quant_marketdata.venues.raw_archive import backfill_funding  # imports this module
+
+        results += backfill_funding(venue, root=root, symbols=plan.symbols)
 
     selected = instruments
     if plan.symbols:
@@ -143,18 +168,25 @@ def download_venue(plan: DownloadPlan, *, root=None, rate: float = 2.0,
 
     resolutions = list(plan.resolutions or venue.resolutions)
     mark_resolutions = resolutions if plan.mark_resolutions is None else list(plan.mark_resolutions)
-    jobs = []
+    window = getattr(venue, "funding_window", None)
+    served_from = end - window if window is not None else None
+    jobs, gone = [], 0
     for row in selected.to_dict("records"):
         symbol = row["venue_symbol"]
         listed = row["listed_at"] if pd.notna(row["listed_at"]) else pd.Timestamp("2015-01-01")
         start = max(listed, plan.since) if plan.since is not None else listed
+        delisted = row.get("delisted_at")
+        if delisted is not None and pd.notna(delisted) and start > delisted:
+            gone += 1
+            continue
         for dataset in plan.datasets:
             if dataset not in venue.capabilities:
                 continue
             if dataset is Dataset.FUNDING:
-                jobs.append((symbol, dataset.value, lambda s=symbol, t=start: download_series(
+                first = start if served_from is None else max(start, served_from - WINDOW_MARGIN)
+                jobs.append((symbol, dataset.value, lambda s=symbol, t=first: download_series(
                     store, venue, s, Dataset.FUNDING, lambda a, b, s=s: venue.funding(s, a, b),
-                    start=t, end=end, step_s=FUNDING_STEP_S)))
+                    start=t, end=end, step_s=FUNDING_STEP_S, served_from=served_from)))
             elif dataset in (Dataset.CANDLES, Dataset.MARK_CANDLES):
                 price = "last" if dataset is Dataset.CANDLES else "mark"
                 for res in resolutions if dataset is Dataset.CANDLES else mark_resolutions:
@@ -167,7 +199,8 @@ def download_venue(plan: DownloadPlan, *, root=None, rate: float = 2.0,
             elif dataset is Dataset.DAILY_METRICS:
                 jobs.append((symbol, dataset.value, lambda s=symbol: _download_metrics(store, venue, s)))
 
-    logger.info("%s: %d instruments, %d series", venue.name, len(selected), len(jobs))
+    logger.info("%s: %d instruments, %d series (%d delisted before their start, skipped)", venue.name,
+                len(selected), len(jobs), gone)
     for index, (symbol, label, job) in enumerate(jobs, 1):
         try:
             result = job()
@@ -195,7 +228,10 @@ def _resolution_seconds(resolution: str) -> int:
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Download venue history into the quant-marketdata store.")
-    parser.add_argument("--venue", required=True, help="Venue name, e.g. lighter.")
+    which = parser.add_mutually_exclusive_group(required=True)
+    which.add_argument("--venue", help="Venue name, e.g. lighter.")
+    which.add_argument("--venues", nargs="+",
+                       help="Several venues, one after the other; a failing venue does not stop the others.")
     parser.add_argument("--root", help="Store root (default: $QUANT_MARKETDATA_ROOT or ./data/marketdata).")
     parser.add_argument("--symbols", nargs="+", help="Native symbols (default: every instrument).")
     parser.add_argument("--datasets", nargs="+", default=[d.value for d in DEFAULT_DATASETS],
@@ -206,26 +242,35 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--since", type=pd.Timestamp, help="Earliest UTC date for a first download.")
     parser.add_argument("--active-only", action="store_true", help="Skip delisted instruments.")
     parser.add_argument("--no-specs", action="store_true", help="Skip the daily specs snapshot.")
+    parser.add_argument("--raw-backfill", action="store_true",
+                        help="First merge the raw funding archive (<root>/_raw/<venue>/funding) into the store.")
     parser.add_argument("--rate", type=float, default=2.0, help="Max requests per second (default: 2).")
     parser.add_argument("-v", "--verbose", action="store_true", help="Log retries.")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
-    plan = DownloadPlan(
-        venue=args.venue,
-        symbols=args.symbols,
-        datasets=[Dataset(d) for d in args.datasets],
-        resolutions=args.resolutions,
-        mark_resolutions=args.mark_resolutions,
-        since=args.since,
-        active_only=args.active_only,
-        specs=not args.no_specs,
-    )
-    results = download_venue(plan, root=args.root, rate=args.rate)
+    results: List[DownloadResult] = []
+    for name in args.venues or [args.venue]:
+        plan = DownloadPlan(
+            venue=name,
+            symbols=args.symbols,
+            datasets=[Dataset(d) for d in args.datasets],
+            resolutions=args.resolutions,
+            mark_resolutions=args.mark_resolutions,
+            since=args.since,
+            active_only=args.active_only,
+            specs=not args.no_specs,
+            raw_backfill=args.raw_backfill,
+        )
+        try:
+            results += download_venue(plan, root=args.root, rate=args.rate)
+        except Exception as exc:  # one failing venue must not stop the others
+            results.append(DownloadResult(name, "*", "venue", error=f"{type(exc).__name__}: {exc}".splitlines()[0]))
+            logger.warning("%s failed: %s", name, results[-1].error)
     failed = [r for r in results if r.error]
     print(f"Done: {len(results)} series, {sum(r.new_rows for r in results)} new rows, {len(failed)} failed")
     for r in failed:
-        print(f"  FAILED {r.symbol} {r.dataset}: {r.error}")
+        print(f"  FAILED {r.venue} {r.symbol} {r.dataset}: {r.error}")
     return 1 if failed else 0
 
 

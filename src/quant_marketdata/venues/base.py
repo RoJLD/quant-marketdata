@@ -51,6 +51,11 @@ class Venue(Protocol):
         """Current specs of every instrument (fees, margins, sizes, status), one row per instrument."""
 
 
+# A venue serving its funding over a rolling window declares ``funding_window`` (OKX, Bitget): a floor, the venue
+# may serve a little more. Nothing is asked before ``now - funding_window - WINDOW_MARGIN``.
+WINDOW_MARGIN = pd.Timedelta(days=7)
+
+
 def require(venue: Venue, dataset: Dataset) -> None:
     if dataset not in venue.capabilities:
         raise UnsupportedDataset(f"{venue.name} does not provide {dataset.value}")
@@ -75,4 +80,4 @@ def available_venues() -> list[str]:
     return sorted(_FACTORIES)
 
 
-__all__ = ["Venue", "available_venues", "get_venue", "register_venue", "require"]
+__all__ = ["Venue", "WINDOW_MARGIN", "available_venues", "get_venue", "register_venue", "require"]

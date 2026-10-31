@@ -1,0 +1,8 @@
+{
+"code":"00000",
+"data":[
+{"askPr":"77401","askSz":"0.0078","baseVolume":"488.478","bidPr":"77400.9","bidSz":"0.0391","change24h":"0.00709","changeUtc24h":"0.00224","deliveryStartTime":null,"deliveryStatus":"","deliveryTime":null,"fundingRate":"0.000097","high24h":"77950.2","holdingAmount":"1504.3819000000034","indexPrice":"77443.3135","lastPr":"77381.3","low24h":"76143","markPrice":"77405.5","open24h":"76836.6","openUtc":"77208.3","quoteVolume":"37679154.16056","symbol":"BTCPERP","ts":"1793455442516","usdtVolume":"37679154.16056"}
+],
+"msg":"success",
+"requestTime":1793455442515
+}

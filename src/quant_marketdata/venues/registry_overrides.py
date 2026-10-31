@@ -121,13 +121,86 @@ DERIVE: Dict[str, Override] = {
     "XAUT-PERP": {**_GOLD_TOKEN, "why": "Tether gold token: crypto venue risk, gold exposure"},
 }
 
+_XAUT: Override = {**_GOLD_TOKEN, "why": "Tether gold token: crypto venue risk, gold exposure"}
+# Pre-IPO companies (no public underlying price), as on Lighter, Binance and Extended.
+_PRE_IPO = "ANTHROPIC OPENAI MOONSHOT OURA POLYMARKET"
+
+# Bybit declares classes (symbolType); its pre-IPO perps (PreLaunch on 2026-10-30) are declared "stock".
+BYBIT: Dict[str, Override] = {
+    **{f"SHIB1000{book}": {"base": "SHIB", "multiplier": 1000.0,
+                           "why": "Bybit's x1000 SHIB contract, scale as a suffix (Binance: 1000SHIBUSDT)"}
+       for book in ("USDT", "PERP")},
+    **_classify(_PRE_IPO, "private", "Pre-IPO company perp, declared stock (PreLaunch)", suffix="USDT"),
+}
+
+# OKX files equity indices under instCategory 3 ("stocks").
+OKX: Dict[str, Override] = {
+    **_classify("US500 US100 JP225 KR200", "index", "Equity index perp (OKX category 3, 'stocks')", ref=True,
+                suffix="-USDT-SWAP"),
+}
+
+# Gate's contract_type "metals" holds gold tokens and metal ETFs; "forex" holds the USDC stablecoin.
+GATE: Dict[str, Override] = {
+    "PAXG_USDT": _GOLD_TOKEN,
+    "XAUT_USDT": _XAUT,
+    **_classify("IAU SLV", "etf", "Exchange-traded fund perp (Gate 'metals')", ref=True, suffix="_USDT"),
+    "USDC_USDT": {"asset_class": "crypto", "why": "USDC stablecoin priced in USDT (Gate 'forex')"},
+}
+
+# Bitget flags RWA perps (isRwa) without their class: those classified here resolve, the others stay unresolved.
+# Beyond the gold tokens, metals and pre-IPO companies, a ticker gets the class that every venue declaring the
+# same ticker gave it on 2026-10-30 (Bybit, OKX, Gate, Binance, Aster, Extended, Paradex, and the decisions
+# above), provided no venue lists that id as crypto: 287 of Bitget's 404 RWA perps. OKX, Gate and Binance file
+# ETFs as stocks: a ticker that only they declare stays "equity". The other RWA perps (HKD lines, Asian and
+# single-venue tickers) are unresolved until classified.
+BITGET: Dict[str, Override] = {
+    "PAXGUSDT": _GOLD_TOKEN,
+    "XAUTUSDT": _XAUT,
+    **_classify("XAU XAG XPT XPD", "commodity", "Metal perp (Bitget RWA)", ref=True, suffix="USDT"),
+    **_classify(_PRE_IPO, "private", "Pre-IPO company perp (Bitget RWA)", suffix="USDT"),
+    **_classify(
+        "AAL AAPL AAPU ABBV ABNB ADBE ADI AEHR AGPU AKAM ALAB AMAT AMC AMD AMGN AMKR AMZN AMZU ANET APD "
+        "APLD APP ARM ASML ASTS ASX AVGO BA BABA BAC BHP BKNG BLSH BMNR BNC BRKB BSP BUD BX BYD CCL CEG "
+        "CGNX CIEN CLS CLSK CMCSA COHR COIN COP CORZ COST CPNG CRCL CRDO CRM CRML CRWD CRWV CSCO CSTOCK "
+        "CSX CVNA CVXSTOCK CYPH DDOG DELL DHR DJT DKNG EBAY EIDO EQT FASTRETAILING FCX FLEX FLNC FLY FOXA "
+        "FTNT FUTU FWDI GE GEV GFS GGLL GIGADEVICE GILD GLW GNRC GOOGL GPRO GS GTLB HD HLT HOOD HPE HUT "
+        "HYUNDAI IBB IBKR IBM INFQ INTC IONQ IREN ISRG ITUB JD JEPQ JIO JMKE JPM KLAC KO KUAISHOU KWEB "
+        "LEN LGELECTRONICS LIN LLY LMT LRCX MAR MARA MCD MDB MEITUAN MELI META METU MINIMAX MINIMAXHKD MP "
+        "MRK MRNA MRVL MSCI MSFT MSTR MU MUFG NAVER NBIS NET NFLX NKE NOC NOW NU NVDA OKLO OKTA ONDS ORCL "
+        "OUST OXY PANW PATH PBR PDD PEP PFE PG PLTR POET POPMART PYPL QCOM QLD RDDT RDW RIO RKLB ROK RUM "
+        "SAMSUNG SAMSUNGEM SBUX SDGR SECZ SHAZ SHEIN SHOP SIMO SKHYNIX SMCI SMIC SMR SNDK SNOW SNPS SOFI "
+        "SOFTBANK SONY SPOT STM TAIYOYUDEN TEAM TEM TENCENT TENCENTHKD TER TM TSEM TSLA TSM TTWO TWLO "
+        "TWST TXN UBER UNH UNITREE USAR V VALE VKTX VLO VOO VRT VST WDC WMT XIAOMI XIAOMIHKD XOM XP ZHIPU "
+        "ZHIPUHKD ZHONGJI ZM ZS",
+        "equity", "Stock perp (Bitget RWA): equity wherever declared", ref=True, suffix="USDT",
+    ),
+    **_classify(
+        "BITO BOTZ BWET CONL EWJ EWT EWZ EWZS GDX IBIT INTW IWM KSTR LYTE MSFU MSTU MUU MVLL NVDL QQQ RAM "
+        "SKDD SKUU SMH SNXX SOXL SOXS SOXX SPCH SPY SQQQ SSPC TBT TLT TMF TQQQ TSLL TZA URNM UVXY XBI XLE "
+        "XLK XLU XLV ZCSH",
+        "etf", "Exchange-traded fund perp (Bitget RWA): etf wherever declared", ref=True, suffix="USDT",
+    ),
+    **_classify(
+        "B200 JP225 KR200",
+        "index", "Index perp (Bitget RWA): index wherever declared", ref=True, suffix="USDT",
+    ),
+    **_classify(
+        "BZ CL COPPER NATGAS",
+        "commodity", "Commodity perp (Bitget RWA): commodity wherever declared", ref=True, suffix="USDT",
+    ),
+}
+
 OVERRIDES: Dict[str, Dict[str, Override]] = {
     "aster": ASTER,
     "binance": BINANCE,
+    "bitget": BITGET,
+    "bybit": BYBIT,
     "derive": DERIVE,
     "extended": EXTENDED,
+    "gate": GATE,
     "hyperliquid": HYPERLIQUID,
     "lighter": LIGHTER,
+    "okx": OKX,
     "paradex": PARADEX,
 }
 
@@ -142,6 +215,28 @@ UNRESOLVED: Dict[str, Dict[str, str]] = {
     },
     "aster": {
         "B-MONEYUSDT": "delisted memecoin whose declared base asset (B-MONEY) is not a ticker; single venue",
+    },
+    # Ids carry no class (registry docstring): where a new venue lists, under an existing id, an underlying of
+    # the other kind (a memecoin where Binance has a stock, or the reverse), the newcomer stays unresolved.
+    "bybit": {
+        "BTTUSDT": "delisted 2022-02-14 and replaced by 1000BTTUSDT (BTT x1000): both would be BTT-USD-PERP",
+        "GMEUSDT": "GME memecoin (the stock is GMESTOCKUSDT); GME-USD-PERP is GameStop on Binance, Aster, Lighter",
+        "MDTUSDT": "MDT token (the stock is MDTSTOCKUSDT); MDT-USD-PERP is Medtronic on Binance",
+        "PENGUSDT": "PENG token (the stock is PENGSTOCKUSDT); PENG-USD-PERP is Penguin Solutions on Binance",
+        "10000WENUSDT": "WEN memecoin x1e4; WEN-USD-PERP is Wendy's on Binance",
+        "ONUSDT": "ON Semiconductor stock (symbolType stock); ON-USD-PERP is a crypto token on Binance",
+    },
+    "okx": {
+        "ON-USDT-SWAP": "ON Semiconductor stock (category 3); ON-USD-PERP is a crypto token on Binance",
+        "BB-USDT-SWAP": "BlackBerry stock (category 3); BB-USD-PERP is BounceBit on Binance (Extended's stock BB "
+                        "is a known clash)",
+        "QNT-USDT-SWAP": "stock (category 3); QNT-USD-PERP is the Quant token on Binance (Extended's stock QNT is "
+                         "a known clash)",
+    },
+    "gate": {
+        "CAT_USDT": "Caterpillar stock (contract_type stocks); CAT-USD-PERP is the Simon's Cat memecoin "
+                    "(1000CAT on Aster, Bybit, Bitget)",
+        "RTX_USDT": "RTX stock (contract_type stocks); RTX-USD-PERP is a crypto perp on Aster",
     },
 }
 
