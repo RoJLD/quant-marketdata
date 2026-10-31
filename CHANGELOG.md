@@ -8,6 +8,8 @@ Quant-lab repo's `docs/PLATFORM.md`.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-11-01
+
 Tier 1 CEX through ccxt: Bybit, OKX, Bitget and Gate perps (funding history, specs, live open interest and
 prices, registry), behind a new `ccxt` extra, with every flagged convention checked on raw payloads on
 2026-10-30 and frozen in fixtures; a backfill from the raw funding archive for the two venues that serve a window

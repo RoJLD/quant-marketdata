@@ -36,7 +36,7 @@ from quant_marketdata.paper_execution import (
     walk_book,
 )
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 __all__ = [
     # funding rates + cross-venue differential
