@@ -4,8 +4,8 @@ Conventions checked on raw payloads, 2026-10-30 (fixtures in ``tests/fixtures/by
 
 - ``instruments-info?category=linear`` lists 883 perps on USDT (815, ``<BASE>USDT``) and USDC (68,
   ``<BASE>PERP``: ``BTCPERP`` is BTC/USDC) plus dated ``LinearFutures`` (dropped), only those ``Trading`` or
-  ``PreLaunch`` unless asked: the **335 delisted perps** come with ``status=Closed`` (two pages of 1,000 with a
-  cursor), each with its ``deliveryTime`` (the delisting), and their funding history is still served
+  ``PreLaunch`` unless asked: the **332 delisted perps** (2026-10-31) come with ``status=Closed`` (two pages
+  of 1,000 with a cursor), each with its ``deliveryTime`` (the delisting), and their funding history is served
   (``10000LADYSUSDT`` until 2025-10-06). They are listed too, ``status`` "delisted": no survivorship bias.
 - ``fundingInterval`` (minutes) is in every instrument: 480 (466), 240 (415), 60 (2) on the day. Intervals
   change over time (``BLURUSDT``: 8 h, then 1 h), hence the gap rule capped at 8 h.

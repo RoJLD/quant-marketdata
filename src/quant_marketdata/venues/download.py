@@ -7,9 +7,10 @@ Each series resumes from its last stored timestamp (that row is fetched again: t
 been incomplete). Long ranges are fetched in chunks merged to disk one by one, so an interrupted run keeps
 its progress. Delisted markets are included by default to avoid survivorship bias; a market delisted before
 the start of its series is skipped (nothing to fetch). A venue serving its funding over a rolling window
-(``funding_window``: OKX, Bitget) cannot fill a series that resumes before the window: the lost span is
-logged, and ``--raw-backfill`` first merges what the raw archive holds (``venues.raw_archive``). Ids that carry
-two asset classes across venues (``registry.class_conflicts``) are logged after each registry update.
+(``funding_window``: OKX, Bitget) starts a first download at the window (minus ``WINDOW_MARGIN``) and cannot
+fill a series that resumes before it: such a series is logged, and ``--raw-backfill`` first merges what the raw
+archive holds (``venues.raw_archive``). Ids that are crypto on one venue and something else on another
+(``registry.class_conflicts``) are logged after each registry update.
 """
 
 from __future__ import annotations

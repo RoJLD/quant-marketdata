@@ -8,6 +8,55 @@ Quant-lab repo's `docs/PLATFORM.md`.
 
 ## [Unreleased]
 
+Tier 1 CEX through ccxt: Bybit, OKX, Bitget and Gate perps (funding history, specs, live open interest and
+prices, registry), behind a new `ccxt` extra, with every flagged convention checked on raw payloads on
+2026-10-30 and frozen in fixtures; a backfill from the raw funding archive for the two venues that serve a window
+only. Work item `wi-qmd-ccxt-adapter` (Quant-lab spec `2026-10-29-venue-expansion-brainstorm.md` §3 step 2).
+
+### Added
+- **`venues.ccxt_venue.CcxtVenue`**: a generic perp venue backed by ccxt, imported lazily (the core stays
+  pandas-only; `pip install "quant-marketdata[ccxt]"`, ccxt >= 4.5.52). ccxt is the transport (its throttle plus
+  this package's `RateLimiter` at `min(rate, max_rate)`, retries on network errors, none on anti-bot refusals)
+  and the market loader; raw endpoints go through ccxt's implicit API. Unified methods are the generic fallback.
+- **`bybit`**, **`okx`**, **`bitget`**, **`gate`** venues (`Dataset.INSTRUMENTS`, `FUNDING`, `SPECS`, `BOOK`,
+  `OPEN_INTEREST`, `PRICES`), conventions in each module's docstring:
+  - funding history paged with the venue's own parameters (ccxt's `since` is ignored by Bitget and refused past
+    180 days by Gate; OKX maps it to `before`): Bybit `endTime` (newest 200), OKX `after` (newest 400), Bitget
+    page numbers (100), Gate `to` (the 30 days before it); since listing on Bybit (BTC 2020-03-25) and Gate (BTC
+    2019-11-18), a **rolling window on OKX (~94 days) and Bitget (90 days)**, declared as `funding_window`;
+  - rates positive when longs pay, per interval: current rates against Binance's on shared symbols, Pearson
+    0.95 (Bybit, 675), 0.95 (OKX, 452), 0.97 (Bitget, 661), 0.92 (Gate, 717), no opposite sign beyond 2 bp
+    (`tests/fixtures/evidence/funding_vs_binance.json`); OKX's `rate` is `realizedRate`;
+  - intervals per symbol without extra requests (Bybit `fundingInterval`, Bitget `fundInterval`, Gate
+    `funding_interval`; OKX `funding-rate?instId=ANY`, one request); `interval_h` from settlement gaps;
+  - open interest in one request: Bybit `singleOpenInterest` (one side; `openInterest`, which ccxt 4.5.52 reads,
+    is exactly twice it on 926 of 926 symbols), OKX `oiCcy` / `oiUsd`, Bitget `holdingAmount`, Gate
+    `total_size` x `quanto_multiplier`, **both sides** (2.0000 x the contracts' long-side `position_size`, median
+    over 1,031 contracts): the 2026-10-29 inventory's Gate figure (0.60x Binance, "one side") is 0.31x one side;
+  - prices: mark, index (OKX: `index-tickers` by `instFamily`) and last;
+  - Bybit's 332 delisted perps (`status=Closed`) listed with their delisting time; Bitget's demo `S*` contracts
+    dropped.
+- **Registry**: rules `parse_bybit`, `parse_okx`, `parse_bitget`, `parse_gate` (USDC books `<BASE>PERP` ->
+  `BTC-USDC-PERP`; FX bases `EURUSDUSDT` -> `EUR-USD-PERP`); scaled prefixes `10000` and `10000000`; `BRL` a fiat
+  currency; the classes Bybit, OKX and Gate declare; an adapter may mark a market unresolved itself
+  (`unresolved_reason`: Bitget's `isRwa` perps); overrides for the gold tokens, metals, indices, the USDC
+  stablecoin, pre-IPO companies, Bybit's `SHIB1000`, and Bitget's RWA tickers classified as every declaring venue
+  classifies them (287 of 404; the rest unresolved); **`registry.class_conflicts(registry)`**: ids that are crypto
+  on one venue and not on another. Eleven newcomer rows whose underlying is of the other kind than the id's on
+  the earlier venues are unresolved by decision (Bybit `GMEUSDT`, `MDTUSDT`, `PENGUSDT`, `10000WENUSDT`,
+  `ONUSDT`, `BTTUSDT`; OKX `ON`, `BB`, `QNT`; Gate `CAT_USDT`, `RTX_USDT`).
+- **`venues.raw_archive.backfill_funding`**: merges the raw funding archive that Quant-lab's
+  `collect_window_funding.py` writes (`<root>/_raw/<venue>/funding/<instrument>.parquet`, Quant-lab #94) into the
+  store, parsed by the venue's own parser, stored rows winning, intervals recomputed over the union; read-only
+  on the archive, no network.
+- `paging.backward_fetch` (newest-first cursor paging, with steps over empty windows) and `paging.numbered_fetch`.
+- `qmd-download --venues ...` (several venues, failure-isolated) and `--raw-backfill`.
+
+### Changed
+- `qmd-download` skips a market delisted before the start of its series, warns when a stored series of a
+  windowed venue ends before the window, starts a windowed venue's first download at the window (minus 7 days),
+  and logs the class conflicts of the ids a venue touches after updating the registry.
+
 ## [0.6.0] — 2026-10-29
 
 Paradex option mark candles recorded daily by `qmd-options-daily`, bounded and failure-isolated, and a
